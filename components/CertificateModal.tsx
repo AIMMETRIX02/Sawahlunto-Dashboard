@@ -24,7 +24,21 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
     window.print()
   }
 
-  const accuracy = Math.round((student.benar / (student.benar + student.salah)) * 100) || 0
+  const completedSteps = [
+    student.safety,
+    student.scaling,
+    student.primer,
+    student.tie_in,
+    student.cord_cable,
+    student.charging,
+    student.blasting_cap,
+    student.cap_line,
+    student.ignite_blastbox,
+    student.blasting,
+    student.motor_fan,
+  ].filter(Boolean).length
+
+  const complianceRate = Math.round((completedSteps / 11) * 100) || 0
 
   const modalContent = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm print:bg-transparent print:p-0 print:items-start print:justify-start">
@@ -88,9 +102,9 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
                 </div>
 
                 <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed">
-                  Dinyatakan <span className="font-bold text-green-700 text-xl sm:text-2xl print-text-green">KOMPETEN / LULUS</span> dengan tingkat akurasi <span className="font-bold text-xl sm:text-2xl text-[#1D2327]">{accuracy}%</span> <br/>
-                  <span className="text-xs sm:text-sm text-slate-500">
-                    (Berhasil menyelesaikan {student.benar} soal dengan benar, dan {student.salah} catatan perbaikan)
+                  Dinyatakan <span className="font-bold text-green-700 text-xl sm:text-2xl print-text-green">KOMPETEN / LULUS</span> Evaluasi Praktik Simulasi Peledakan<br/>
+                  <span className="text-xs sm:text-sm text-slate-600 font-semibold">
+                    Tingkat Kepatuhan Prosedur: {complianceRate}% ({completedSteps} dari 11 Prosedur Keselamatan & Operasional Terpenuhi)
                   </span>
                 </p>
               </div>

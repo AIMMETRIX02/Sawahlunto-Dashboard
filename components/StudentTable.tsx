@@ -47,6 +47,22 @@ export interface StudentData {
   motor_fan?: boolean
 }
 
+export const getCompletedSteps = (student: Partial<StudentData>) => {
+  return [
+    student.safety,
+    student.scaling,
+    student.primer,
+    student.tie_in,
+    student.cord_cable,
+    student.charging,
+    student.blasting_cap,
+    student.cap_line,
+    student.ignite_blastbox,
+    student.blasting,
+    student.motor_fan,
+  ].filter(Boolean).length
+}
+
 // Custom Toast Component for simple notification
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
   useEffect(() => {
@@ -161,9 +177,9 @@ export function StudentTable() {
     }
 
     if (filterStatus === 'Lulus') {
-      result = result.filter(student => student.benar >= passingThreshold)
+      result = result.filter(student => getCompletedSteps(student) >= passingThreshold)
     } else if (filterStatus === 'Tidak Lulus') {
-      result = result.filter(student => student.benar < passingThreshold)
+      result = result.filter(student => getCompletedSteps(student) < passingThreshold)
     }
 
     // Sorting
@@ -191,9 +207,8 @@ export function StudentTable() {
 
   // Calculate Statistics
   const totalStudents = data.length
-  const averageScore = totalStudents > 0 ? data.reduce((acc, curr) => acc + curr.benar, 0) / totalStudents : 0
-  const highestScore = totalStudents > 0 ? Math.max(...data.map(s => s.benar)) : 0
-  const passedStudents = data.filter(s => s.benar >= passingThreshold).length
+  const passedStudents = data.filter(s => getCompletedSteps(s) >= passingThreshold).length
+  const failedStudents = totalStudents - passedStudents
   const passRate = totalStudents > 0 ? (passedStudents / totalStudents) * 100 : 0
 
   // Export CSV
@@ -203,32 +218,34 @@ export function StudentTable() {
       return
     }
 
-    const headers = ['ID', 'Nama', 'ID Peserta', 'Instansi', 'Modul', 'Tanggal', 'Waktu', 'Benar', 'Salah', 'Status', 'Safety equipment', 'Scaling', 'Primer', 'Tie In', 'Cord/Cable', 'Charging', 'Blasting Cap', 'Cap Line', 'Ignite Blastbox', 'Blasting', 'Motor Fan']
+    const headers = ['ID', 'Nama', 'ID Peserta', 'Instansi', 'Modul', 'Tanggal', 'Waktu', 'Prosedur OK', 'Status', 'Safety equipment', 'Scaling', 'Primer', 'Tie In', 'Cord/Cable', 'Charging', 'Blasting Cap', 'Cap Line', 'Ignite Blastbox', 'Blasting', 'Motor Fan']
     const csvContent = [
       headers.join(','),
-      ...filteredData.map(s => [
-        s.id,
-        `"${s.nama}"`,
-        `"${s.id_peserta || ''}"`,
-        `"${s.instansi || 'BDTBT ESDM'}"`,
-        `"${s.modul || 'Umum'}"`,
-        s.tanggal,
-        s.waktu,
-        s.benar,
-        s.salah,
-        s.benar >= passingThreshold ? 'Lulus' : 'Tidak Lulus',
-        s.safety ? 'Ya' : 'Tidak',
-        s.scaling ? 'Ya' : 'Tidak',
-        s.primer ? 'Ya' : 'Tidak',
-        s.tie_in ? 'Ya' : 'Tidak',
-        s.cord_cable ? 'Ya' : 'Tidak',
-        s.charging ? 'Ya' : 'Tidak',
-        s.blasting_cap ? 'Ya' : 'Tidak',
-        s.cap_line ? 'Ya' : 'Tidak',
-        s.ignite_blastbox ? 'Ya' : 'Tidak',
-        s.blasting ? 'Ya' : 'Tidak',
-        s.motor_fan ? 'Ya' : 'Tidak'
-      ].join(','))
+      ...filteredData.map(s => {
+        const okCount = getCompletedSteps(s)
+        return [
+          s.id,
+          `"${s.nama}"`,
+          `"${s.id_peserta || ''}"`,
+          `"${s.instansi || 'BDTBT ESDM'}"`,
+          `"${s.modul || 'Umum'}"`,
+          s.tanggal,
+          s.waktu,
+          `${okCount}/11`,
+          okCount >= passingThreshold ? 'Lulus' : 'Tidak Lulus',
+          s.safety ? 'Ya' : 'Tidak',
+          s.scaling ? 'Ya' : 'Tidak',
+          s.primer ? 'Ya' : 'Tidak',
+          s.tie_in ? 'Ya' : 'Tidak',
+          s.cord_cable ? 'Ya' : 'Tidak',
+          s.charging ? 'Ya' : 'Tidak',
+          s.blasting_cap ? 'Ya' : 'Tidak',
+          s.cap_line ? 'Ya' : 'Tidak',
+          s.ignite_blastbox ? 'Ya' : 'Tidak',
+          s.blasting ? 'Ya' : 'Tidak',
+          s.motor_fan ? 'Ya' : 'Tidak'
+        ].join(',')
+      })
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -382,8 +399,8 @@ export function StudentTable() {
 
       <SummaryCards 
         totalStudents={totalStudents} 
-        averageScore={averageScore} 
-        highestScore={highestScore} 
+        passedStudents={passedStudents} 
+        failedStudents={failedStudents} 
         passRate={passRate}
       />
 
@@ -394,9 +411,9 @@ export function StudentTable() {
             <button 
               onClick={() => setIsThresholdModalOpen(true)}
               className="text-xs font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-800 w-fit hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors flex items-center gap-1 cursor-pointer"
-              title="Klik untuk ubah standar lulus"
+              title="Klik untuk ubah standar kelulusan prosedur"
             >
-              Standar Lulus: Skor ≥ {passingThreshold} <Edit2 className="w-3 h-3 ml-1" />
+              Standar Lulus: ≥ {passingThreshold}/11 Prosedur <Edit2 className="w-3 h-3 ml-1" />
             </button>
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Kelola dan pantau hasil evaluasi ujian diklat pertambangan BDTBT ESDM secara real-time.</p>
@@ -514,7 +531,7 @@ export function StudentTable() {
                   <th className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">Instansi</th>
                   <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Modul Diklat</th>
                   <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Tanggal & Waktu</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap">Skor (B/S)</th>
+                  <th className="px-6 py-4 text-center whitespace-nowrap">Prosedur (OK)</th>
                   <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
                   <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
                 </tr>
@@ -532,7 +549,8 @@ export function StudentTable() {
                   </tr>
                 ) : (
                   filteredData.map((student) => {
-                    const isPassed = student.benar >= passingThreshold;
+                    const completedSteps = getCompletedSteps(student);
+                    const isPassed = completedSteps >= passingThreshold;
                     const displayId = student.id_peserta || '-';
                     const displayInstansi = student.instansi || 'BDTBT ESDM';
                     
@@ -570,14 +588,9 @@ export function StudentTable() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center whitespace-nowrap">
-                          <div className="flex flex-col space-y-1 text-xs font-medium items-center justify-center">
-                            <span className="inline-flex items-center justify-between px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 w-20 border border-transparent dark:border-green-800/30">
-                              <span>Benar:</span> <span className="font-bold text-sm">{student.benar}</span>
-                            </span>
-                            <span className="inline-flex items-center justify-between px-2 py-1 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 w-20 border border-transparent dark:border-red-800/30">
-                              <span>Salah:</span> <span className="font-bold text-sm">{student.salah}</span>
-                            </span>
-                          </div>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-[#FFF000] border border-amber-200 dark:border-amber-800">
+                            {completedSteps} / 11 OK
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-center whitespace-nowrap">
                           <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
@@ -669,13 +682,14 @@ export function StudentTable() {
       {isThresholdModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden p-6 text-center">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Ubah Standar Kelulusan Diklat</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Ubah Standar Kelulusan Prosedur Diklat</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Tentukan batas minimum skor Benar agar peserta dinyatakan Kompeten / Lulus evaluasi diklat.
+              Tentukan batas minimum prosedur peledakan yang harus dipenuhi (1 - 11 Prosedur) agar peserta dinyatakan Kompeten / Lulus.
             </p>
             <input 
               type="number" 
-              min="0"
+              min="1"
+              max="11"
               value={passingThreshold}
               onChange={(e) => setPassingThreshold(parseInt(e.target.value) || 0)}
               className="w-full text-center text-3xl font-bold py-3 px-4 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none mb-6 text-gray-900 dark:text-white"

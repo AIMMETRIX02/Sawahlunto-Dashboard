@@ -2,12 +2,12 @@ import { Users, CheckCircle2, TrendingUp, Target } from 'lucide-react'
 
 interface SummaryCardsProps {
   totalStudents: number
-  averageScore: number
-  highestScore: number
+  passedStudents: number
+  failedStudents: number
   passRate: number
 }
 
-export function SummaryCards({ totalStudents, averageScore, highestScore, passRate }: SummaryCardsProps) {
+export function SummaryCards({ totalStudents, passedStudents, failedStudents, passRate }: SummaryCardsProps) {
   const cards = [
     {
       title: 'Total Peserta Diklat',
@@ -17,25 +17,25 @@ export function SummaryCards({ totalStudents, averageScore, highestScore, passRa
       bgColor: 'bg-amber-100 dark:bg-amber-900/30'
     },
     {
-      title: 'Rata-rata Benar',
-      value: averageScore.toFixed(1),
-      icon: TrendingUp,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900/30'
+      title: 'Peserta Kompeten',
+      value: passedStudents,
+      icon: CheckCircle2,
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-100 dark:bg-green-900/30'
     },
     {
-      title: 'Skor Tertinggi',
-      value: highestScore,
+      title: 'Belum Kompeten',
+      value: failedStudents,
       icon: Target,
-      color: 'text-amber-600 dark:text-amber-500',
-      bgColor: 'bg-amber-100 dark:bg-amber-900/30'
+      color: 'text-rose-600 dark:text-rose-400',
+      bgColor: 'bg-rose-100 dark:bg-rose-900/30'
     },
     {
       title: 'Tingkat Kelulusan',
       value: `${passRate.toFixed(0)}%`,
-      icon: CheckCircle2,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-100 dark:bg-green-900/30'
+      icon: TrendingUp,
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/30'
     }
   ]
 

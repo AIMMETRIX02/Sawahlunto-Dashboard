@@ -198,32 +198,6 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  🖼️ URL / Gambar Diagram Delay (Delay Image)
-                </label>
-                <input
-                  type="text"
-                  value={formData.delay_image || ''}
-                  onChange={(e) => setFormData({ ...formData, delay_image: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all text-sm font-medium"
-                  placeholder="Masukkan URL / Link Gambar Diagram Delay"
-                />
-                {formData.delay_image && /^(https?:\/\/|data:image\/|\/)/i.test(formData.delay_image.trim()) && (
-                  <div className="mt-2 p-2.5 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center space-x-3 border border-gray-200 dark:border-slate-700">
-                    <img
-                      src={formData.delay_image}
-                      alt="Preview Delay Diagram"
-                      className="w-16 h-12 object-cover rounded-lg border border-yellow-500/40 shadow-sm"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                    <span className="text-xs text-amber-700 dark:text-amber-400 font-semibold truncate">
-                      ✓ Diagram Delay Terdeteksi & Siap Dipreview
-                    </span>
-                  </div>
-                )}
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tanggal</label>
@@ -245,36 +219,6 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all text-xs font-medium"
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-bold text-[#CA8A04] dark:text-[#FACC15] uppercase tracking-wider mb-3 flex items-center">
-              📊 Skor Hasil Ujian
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50/50 dark:bg-green-900/10 p-3 rounded-2xl border border-green-200 dark:border-green-900/30">
-                <label className="block text-xs font-bold text-green-700 dark:text-green-400 mb-1">Jawaban Benar</label>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  value={formData.benar}
-                  onChange={(e) => setFormData({ ...formData, benar: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 font-bold rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-lg"
-                />
-              </div>
-              <div className="bg-red-50/50 dark:bg-red-900/10 p-3 rounded-2xl border border-red-200 dark:border-red-900/30">
-                <label className="block text-xs font-bold text-red-700 dark:text-red-400 mb-1">Jawaban Salah</label>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  value={formData.salah}
-                  onChange={(e) => setFormData({ ...formData, salah: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 font-bold rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all text-lg"
-                />
               </div>
             </div>
           </div>

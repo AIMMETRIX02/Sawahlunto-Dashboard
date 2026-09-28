@@ -186,7 +186,12 @@ export default function PesertaDashboard() {
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 {hasilUjianList.map((hasilUjian, index) => {
-                  const isPassed = hasilUjian.benar >= passingThreshold
+                  const completedSteps = [
+                    hasilUjian.safety, hasilUjian.scaling, hasilUjian.primer, hasilUjian.tie_in, hasilUjian.cord_cable,
+                    hasilUjian.charging, hasilUjian.blasting_cap, hasilUjian.cap_line,
+                    hasilUjian.ignite_blastbox, hasilUjian.blasting, hasilUjian.motor_fan
+                  ].filter(Boolean).length
+                  const isPassed = completedSteps >= passingThreshold
                   
                   return (
                     <div key={hasilUjian.id} className="animate-in fade-in slide-in-from-bottom-4 bg-gray-50/50 dark:bg-slate-800/20 rounded-3xl p-6 border border-gray-200 dark:border-slate-800 flex flex-col justify-between h-full shadow-sm hover:shadow-md transition-shadow">
@@ -231,22 +236,22 @@ export default function PesertaDashboard() {
                           </h3>
                         </div>
 
-                        {/* Score Card */}
+                        {/* Procedure Compliance Card */}
                         <div className="bg-white dark:bg-slate-800/50 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 flex flex-col justify-center">
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3">Rincian Hasil Ujian</p>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3">Rincian Kepatuhan Prosedur</p>
                           <div className="space-y-2.5 text-xs">
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-600 dark:text-gray-300 font-medium">Jawaban Benar</span>
-                              <span className="text-base font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-slate-900 px-3 py-0.5 rounded-lg shadow-sm">{hasilUjian.benar}</span>
+                              <span className="text-gray-600 dark:text-gray-300 font-medium">Prosedur Terpenuhi</span>
+                              <span className="text-base font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-0.5 rounded-lg shadow-sm">{completedSteps} / 11</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-600 dark:text-gray-300 font-medium">Jawaban Salah</span>
-                              <span className="text-base font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-slate-900 px-3 py-0.5 rounded-lg shadow-sm">{hasilUjian.salah}</span>
+                              <span className="text-gray-600 dark:text-gray-300 font-medium">Prosedur Belum Selesai</span>
+                              <span className="text-base font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-3 py-0.5 rounded-lg shadow-sm">{11 - completedSteps}</span>
                             </div>
                             <div className="pt-2 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center">
-                              <span className="text-gray-600 dark:text-gray-300 font-bold">Tingkat Akurasi</span>
+                              <span className="text-gray-600 dark:text-gray-300 font-bold">Tingkat Kepatuhan</span>
                               <span className="text-base font-black text-[#CA8A04] dark:text-[#FACC15]">
-                                {Math.round((hasilUjian.benar / (hasilUjian.benar + hasilUjian.salah)) * 100) || 0}%
+                                {Math.round((completedSteps / 11) * 100)}%
                               </span>
                             </div>
                           </div>
