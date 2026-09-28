@@ -526,14 +526,16 @@ export function StudentTable() {
           <div className="overflow-x-auto min-h-[400px]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50/80 dark:bg-slate-800/80 border-b border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider">
-                  <th className="px-6 py-4 whitespace-nowrap">Nama & ID Peserta</th>
-                  <th className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">Instansi</th>
-                  <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Modul Diklat</th>
-                  <th className="px-6 py-4 whitespace-nowrap hidden md:table-cell">Tanggal & Waktu</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap">Prosedur (OK)</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
+                <tr className="bg-gray-50/90 dark:bg-slate-800/90 border-b border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider">
+                  <th className="px-4 py-3.5 whitespace-nowrap">Nama & ID Peserta</th>
+                  <th className="px-3.5 py-3.5 whitespace-nowrap hidden lg:table-cell">Instansi</th>
+                  <th className="px-3.5 py-3.5 whitespace-nowrap hidden md:table-cell">Modul Diklat</th>
+                  <th className="px-3.5 py-3.5 whitespace-nowrap hidden md:table-cell">Tanggal & Waktu</th>
+                  <th className="px-3.5 py-3.5 text-center whitespace-nowrap">Prosedur (OK)</th>
+                  <th className="px-3.5 py-3.5 text-center whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-center whitespace-nowrap sticky right-0 bg-gray-50/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.12)] z-20">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
@@ -555,11 +557,11 @@ export function StudentTable() {
                     const displayInstansi = student.instansi || 'BDTBT ESDM';
                     
                     return (
-                      <tr key={student.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors group">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <tr key={student.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors group">
+                        <td className="px-4 py-3.5 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="font-semibold text-gray-900 dark:text-white group-hover:text-[#CA8A04] dark:group-hover:text-[#FFF000] transition-colors">{student.nama}</span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{displayId}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{displayId}</span>
                             <div className="lg:hidden text-xs text-amber-600 dark:text-amber-400 font-medium mt-0.5">
                               🏢 {displayInstansi}
                             </div>
@@ -571,28 +573,28 @@ export function StudentTable() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                          <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        <td className="px-3.5 py-3.5 whitespace-nowrap hidden lg:table-cell">
+                          <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium">
                             {displayInstansi}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <td className="px-3.5 py-3.5 whitespace-nowrap hidden md:table-cell">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                             {student.modul || 'Tambang Bawah Tanah'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <td className="px-3.5 py-3.5 whitespace-nowrap hidden md:table-cell">
                           <div className="flex flex-col">
-                            <span className="text-gray-900 dark:text-gray-200 font-medium">{student.tanggal}</span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">{student.waktu}</span>
+                            <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-200 font-medium">{student.tanggal}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{student.waktu}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-[#FFF000] border border-amber-200 dark:border-amber-800">
                             {completedSteps} / 11 OK
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
                           <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
                             isPassed 
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50' 
@@ -601,31 +603,31 @@ export function StudentTable() {
                             {isPassed ? 'Kompeten' : 'Belum Kompeten'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                          <div className="flex justify-center space-x-1 sm:space-x-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-gray-50 dark:group-hover:bg-slate-800 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.12)] transition-colors z-10">
+                          <div className="flex items-center justify-center space-x-1.5">
                             
                             {/* Certificate Button (Only for Passed Students) */}
                             {isPassed && (
                               <button 
                                 onClick={() => openCertificateModal(student)}
-                                className="p-2 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors border border-transparent hover:border-amber-100 dark:hover:border-amber-800/50 flex items-center"
+                                className="p-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/60 rounded-lg transition-colors border border-amber-200 dark:border-amber-800 flex items-center shadow-xs"
                                 title="Cetak Sertifikat ESDM"
                               >
                                 <Award className="h-4 w-4" />
-                                <span className="ml-1 text-xs font-bold hidden xl:block">Cetak</span>
+                                <span className="ml-1 text-[11px] font-bold hidden 2xl:inline">Sertifikat</span>
                               </button>
                             )}
 
                             <button 
                               onClick={() => openEditModal(student)}
-                              className="p-2 text-blue-600 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-800/50"
+                              className="p-1.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg transition-colors border border-blue-200 dark:border-blue-800 shadow-xs"
                               title="Edit Data"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
                             <button 
                               onClick={() => openDeleteModal(student)}
-                              className="p-2 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-800/50"
+                              className="p-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg transition-colors border border-red-200 dark:border-red-800 shadow-xs"
                               title="Hapus Data"
                             >
                               <Trash2 className="h-4 w-4" />
