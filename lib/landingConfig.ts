@@ -41,6 +41,7 @@ export interface DownloadConfig {
   fileMeta: string[]
   buttonText: string
   fileName: string
+  fileUrl?: string
 }
 
 export interface CustomBlockItem {
@@ -157,9 +158,10 @@ export const DEFAULT_LANDING_CONFIG: LandingConfig = {
     badge: 'Pusat Unduhan Resmi BDTBT',
     title: 'Unduh Buku Panduan & SOP Blasting VR',
     description: 'Buku pedoman resmi berisikan standar operasional prosedur keselamatan peledakan tambang bawah tanah Sawahlunto.',
-    fileMeta: ['Format: PDF', 'Ukuran: 14.5 MB', 'Edisi 2024 • Rev 3.2'],
+    fileMeta: ['Format: PDF', 'Ukuran: 39 MB', 'Edisi 2024 • Rev 3.2'],
     buttonText: 'Unduh Buku Panduan & SOP (PDF)',
-    fileName: 'SOP_Blasting_VR_BDTBT_ESDM.pdf'
+    fileName: 'Manual Book Non Electrical UG Blast BDTBT.pdf',
+    fileUrl: 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'
   },
   customBlocks: [],
   articles: [

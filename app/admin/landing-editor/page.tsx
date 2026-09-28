@@ -836,6 +836,19 @@ export default function LandingEditorPage() {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  URL Tautan Berkas Unduhan (Cloud Storage / R2)
+                </label>
+                <input
+                  type="text"
+                  value={config.download.fileUrl || ''}
+                  placeholder="https://pub-....r2.dev/..."
+                  onChange={(e) => setConfig({ ...config, download: { ...config.download, fileUrl: e.target.value } })}
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm font-mono"
+                />
+              </div>
             </div>
           </div>
         )}

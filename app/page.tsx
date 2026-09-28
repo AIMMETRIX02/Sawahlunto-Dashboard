@@ -139,18 +139,24 @@ export default function LandingPage() {
     }
   }
 
-  const triggerDownload = (fileName: string, label: string) => {
+  const triggerDownload = (url: string, fileName: string, label: string) => {
     setDownloadToast(`Memulai unduhan berkas: ${label}...`)
+    const targetUrl = url || config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'
+    const targetName = fileName || config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'
+    
+    const link = document.createElement('a')
+    link.href = targetUrl
+    link.setAttribute('download', targetName)
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
     setTimeout(() => {
-      const link = document.createElement('a')
-      link.href = '#'
-      link.setAttribute('download', fileName)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
       setDownloadToast(`Unduhan ${label} berhasil disiapkan!`)
       setTimeout(() => setDownloadToast(null), 4000)
-    }, 1000)
+    }, 500)
   }
 
   return (
@@ -660,13 +666,20 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <button
-              onClick={() => triggerDownload(config.download.fileName, config.download.buttonText)}
-              className="mt-8 w-full sm:w-auto px-10 py-4 bg-[#FFF000] hover:bg-yellow-400 text-black text-sm sm:text-base font-black rounded-2xl transition-all flex items-center justify-center space-x-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] border border-yellow-300"
+            <a
+              href={config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'}
+              onClick={() => {
+                setDownloadToast(`Memulai unduhan berkas: ${config.download.buttonText}...`)
+                setTimeout(() => setDownloadToast(null), 4000)
+              }}
+              className="mt-8 w-full sm:w-auto px-10 py-4 bg-[#FFF000] hover:bg-yellow-400 text-black text-sm sm:text-base font-black rounded-2xl transition-all flex items-center justify-center space-x-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] border border-yellow-300 cursor-pointer"
             >
               <Download className="w-5 h-5 text-black" />
               <span>{config.download.buttonText}</span>
-            </button>
+            </a>
           </div>
         </div>
       </section>
