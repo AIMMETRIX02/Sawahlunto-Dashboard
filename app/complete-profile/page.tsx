@@ -28,7 +28,7 @@ export default function CompleteProfilePage() {
       const userPesertaId = profile?.id_peserta
       const isPeserta = profile?.role === 'peserta' || profile?.role === 'mahasiswa'
       
-      // Non-participant roles (superadmin, admin, dosen) do not need to fill participant profile
+      // Non-participant roles (superadmin, admin) do not need to fill participant profile
       if (profile?.role && !isPeserta) {
         router.push('/')
         return

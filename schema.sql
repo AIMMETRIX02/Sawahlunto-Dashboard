@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     id_peserta TEXT UNIQUE,
     instansi TEXT DEFAULT 'Balai Diklat Tambang Bawah Tanah',
-    role TEXT DEFAULT 'peserta' CHECK (role IN ('superadmin', 'dosen', 'admin', 'peserta', 'mahasiswa')),
+    role TEXT DEFAULT 'peserta' CHECK (role IN ('superadmin', 'admin', 'peserta', 'mahasiswa')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -45,7 +45,7 @@ interface UserProfile {
   id_peserta: string | null
   stambuk?: string | null
   instansi: string | null
-  role: 'superadmin' | 'admin' | 'dosen' | 'peserta' | 'mahasiswa' | string
+  role: 'superadmin' | 'admin' | 'peserta' | 'mahasiswa' | string
   created_at: string | null
   updated_at?: string | null
 }
@@ -65,13 +65,6 @@ const ROLES_INFO: Record<string, { label: string; desc: string; color: string; b
     badgeBg: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-700/60',
     icon: ShieldCheck
   },
-  dosen: {
-    label: 'Instruktur / Dosen',
-    desc: 'Pengajar diklat: monitoring ujian, review hasil simulasi peledakan, validasi kelulusan.',
-    color: 'text-teal-600 dark:text-teal-400',
-    badgeBg: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-300 dark:border-teal-700/60',
-    icon: GraduationCap
-  },
   peserta: {
     label: 'Peserta Diklat',
     desc: 'Peserta pelatihan: akses portal hasil ujian pribadi, diagram delay, dan sertifikat kelulusan.',
@@ -79,11 +72,18 @@ const ROLES_INFO: Record<string, { label: string; desc: string; color: string; b
     badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700/60',
     icon: HardHat
   },
+  dosen: {
+    label: 'Administrator',
+    desc: 'Akun pengelola diklat.',
+    color: 'text-blue-600 dark:text-blue-400',
+    badgeBg: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-700/60',
+    icon: ShieldCheck
+  },
   mahasiswa: {
-    label: 'Peserta Diklat (Legacy)',
-    desc: 'Label kompatibilitas peserta lama.',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    badgeBg: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60',
+    label: 'Peserta Diklat',
+    desc: 'Label peserta diklat.',
+    color: 'text-amber-600 dark:text-amber-400',
+    badgeBg: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700/60',
     icon: HardHat
   }
 }
@@ -119,7 +119,7 @@ export default function SuperadminPage() {
   const [newFullName, setNewFullName] = useState('')
   const [newIdPeserta, setNewIdPeserta] = useState('')
   const [newInstansi, setNewInstansi] = useState('Balai Diklat Tambang Bawah Tanah')
-  const [newRole, setNewRole] = useState<'superadmin' | 'admin' | 'dosen' | 'peserta'>('peserta')
+  const [newRole, setNewRole] = useState<'superadmin' | 'admin' | 'peserta'>('peserta')
   const [showPassword, setShowPassword] = useState(false)
   const [formSubmitting, setFormSubmitting] = useState(false)
 
@@ -223,7 +223,7 @@ export default function SuperadminPage() {
 
       const matchesSearch = !q || name.includes(q) || email.includes(q) || idStr.includes(q) || instansi.includes(q)
       
-      const roleNormalized = p.role === 'mahasiswa' ? 'peserta' : p.role
+      const roleNormalized = p.role === 'mahasiswa' ? 'peserta' : p.role === 'dosen' ? 'admin' : p.role
       const matchesRole = selectedRoleFilter === 'all' || roleNormalized === selectedRoleFilter
 
       const matchesInstansi = selectedInstansiFilter === 'all' || (p.instansi && p.instansi.trim() === selectedInstansiFilter)
@@ -251,14 +251,12 @@ export default function SuperadminPage() {
   const metrics = useMemo(() => {
     let superadminCount = 0
     let adminCount = 0
-    let dosenCount = 0
     let pesertaCount = 0
 
     profiles.forEach(p => {
       const r = p.role
       if (r === 'superadmin') superadminCount++
-      else if (r === 'admin') adminCount++
-      else if (r === 'dosen') dosenCount++
+      else if (r === 'admin' || r === 'dosen') adminCount++
       else pesertaCount++
     })
 
@@ -266,7 +264,6 @@ export default function SuperadminPage() {
       total: profiles.length,
       superadmin: superadminCount,
       admin: adminCount,
-      dosen: dosenCount,
       peserta: pesertaCount
     }
   }, [profiles])
@@ -590,7 +587,7 @@ export default function SuperadminPage() {
                 Manajemen Akun & Kontrol Hak Akses
               </h1>
               <p className="text-gray-300 text-sm sm:text-base mt-1.5 max-w-2xl leading-relaxed">
-                Kelola kredensial, tetapkan peran pengguna (<span className="text-[#FFF000] font-semibold">Superadmin</span>, <span className="text-blue-400 font-semibold">Admin</span>, <span className="text-teal-400 font-semibold">Instruktur</span>, dan <span className="text-amber-400 font-semibold">Peserta</span>), serta kelola akses database terpusat.
+                Kelola kredensial, tetapkan peran pengguna (<span className="text-[#FFF000] font-semibold">Superadmin</span>, <span className="text-blue-400 font-semibold">Administrator</span>, dan <span className="text-amber-400 font-semibold">Peserta Diklat</span>), serta kelola akses database terpusat.
               </p>
             </div>
 
@@ -648,17 +645,17 @@ export default function SuperadminPage() {
             </div>
           </div>
 
-          {/* Admin & Instruktur */}
+          {/* Administrator */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-blue-100 dark:border-blue-900/30 shadow-md">
             <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400">Admin & Instruktur</span>
+              <span className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-400">Administrator</span>
               <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                 <ShieldCheck className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 dark:text-blue-400">{metrics.admin + metrics.dosen}</span>
-              <span className="text-xs text-blue-500 font-semibold">staf BDTBT</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-blue-700 dark:text-blue-400">{metrics.admin}</span>
+              <span className="text-xs text-blue-500 font-semibold">pengelola diklat</span>
             </div>
           </div>
 
@@ -720,8 +717,7 @@ export default function SuperadminPage() {
                 >
                   <option value="all">Semua Role</option>
                   <option value="superadmin">Superadmin</option>
-                  <option value="admin">Admin</option>
-                  <option value="dosen">Dosen / Instruktur</option>
+                  <option value="admin">Administrator</option>
                   <option value="peserta">Peserta Diklat</option>
                 </select>
               </div>
@@ -827,7 +823,6 @@ export default function SuperadminPage() {
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm ${
                               roleKey === 'superadmin' ? 'bg-purple-600 text-white' :
                               roleKey === 'admin' ? 'bg-blue-600 text-white' :
-                              roleKey === 'dosen' ? 'bg-teal-600 text-white' :
                               'bg-amber-500 text-black font-extrabold'
                             }`}>
                               {(p.full_name || p.nama || p.email || 'U').slice(0, 2).toUpperCase()}
@@ -899,7 +894,6 @@ export default function SuperadminPage() {
                             >
                               <option value="superadmin">Jadikan Superadmin</option>
                               <option value="admin">Jadikan Admin</option>
-                              <option value="dosen">Jadikan Dosen</option>
                               <option value="peserta">Jadikan Peserta</option>
                             </select>
                           </div>
@@ -1070,7 +1064,6 @@ export default function SuperadminPage() {
                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-[#1D2327] focus:outline-none"
                   >
                     <option value="peserta">Peserta Diklat</option>
-                    <option value="dosen">Dosen / Instruktur</option>
                     <option value="admin">Administrator Diklat</option>
                     <option value="superadmin">Superadmin</option>
                   </select>
@@ -1191,7 +1184,6 @@ export default function SuperadminPage() {
                   >
                     <option value="superadmin">Superadmin</option>
                     <option value="admin">Administrator Diklat</option>
-                    <option value="dosen">Dosen / Instruktur</option>
                     <option value="peserta">Peserta Diklat</option>
                   </select>
                 </div>

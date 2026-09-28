@@ -65,7 +65,7 @@ export function Navbar() {
       router.push('/profile')
     } else if (menu === 'portal-peserta' || menu === 'portal-mahasiswa') {
       router.push('/peserta')
-    } else if (menu === 'portal-dosen' || menu === 'portal-admin') {
+    } else if (menu === 'portal-admin') {
       router.push('/')
     } else if (menu === 'logout') {
       handleLogout()
@@ -213,10 +213,10 @@ export function Navbar() {
                       </button>
 
                       <button 
-                        onClick={() => handleNavClick('portal-dosen')} 
+                        onClick={() => handleNavClick('portal-admin')} 
                         className="flex items-center w-full px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                       >
-                        <LayoutDashboard className="h-4 w-4 mr-3 text-amber-500" /> Portal Instruktur / Admin
+                        <LayoutDashboard className="h-4 w-4 mr-3 text-amber-500" /> Portal Administrator
                       </button>
 
                       <button 
@@ -314,9 +314,9 @@ export function Navbar() {
                     <Crown className="h-5 w-5 text-purple-400" />
                     <span>Kelola Akun & Hak Akses</span>
                   </button>
-                  <button onClick={() => handleNavClick('portal-dosen')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-gray-100">
+                  <button onClick={() => handleNavClick('portal-admin')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-gray-100">
                     <LayoutDashboard className="h-5 w-5 text-gray-400" />
-                    <span>Portal Instruktur / Admin</span>
+                    <span>Portal Administrator</span>
                   </button>
                   <button onClick={() => handleNavClick('portal-peserta')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-[#FFF000] font-semibold">
                     <User className="h-5 w-5 text-[#FFF000]" />

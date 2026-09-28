@@ -90,8 +90,8 @@ export default function PesertaDashboard() {
           if (dataNew) {
             setHasilUjianList(dataNew)
           }
-        } else if (role === 'superadmin' || role === 'dosen' || role === 'admin') {
-          // If superadmin has no specific NIP, fetch all recent exam results for previewing
+        } else if (role === 'superadmin' || role === 'admin') {
+          // If superadmin/admin has no specific NIP, fetch all recent exam results for previewing
           const { data: allData } = await supabase
             .from('hasil_ujian')
             .select('*')
@@ -130,7 +130,7 @@ export default function PesertaDashboard() {
     )
   }
 
-  const isSuperadmin = userRole === 'superadmin' || userRole === 'dosen' || userRole === 'admin'
+  const isSuperadmin = userRole === 'superadmin' || userRole === 'admin'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
