@@ -38,7 +38,7 @@ export default function PesertaDashboard() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [stambuk, setStambuk] = useState<string | null>(null)
+  const [idPeserta, setIdPeserta] = useState<string | null>(null)
   const [hasilUjianList, setHasilUjianList] = useState<any[]>([])
   const [selectedCertificate, setSelectedCertificate] = useState<any | null>(null)
   const [selectedDelayData, setSelectedDelayData] = useState<{ title: string; image: string | null; data: any | null } | null>(null)
@@ -72,13 +72,13 @@ export default function PesertaDashboard() {
           return
         }
 
-        // NOTE: Superadmin / Dosen / Admin ARE ALLOWED to access & preview this page!
+        // NOTE: Superadmin / Instruktur / Admin ARE ALLOWED to access & preview this page!
 
         setUser(session.user)
         const userPesertaId = profile?.id_peserta
         
         if (userPesertaId) {
-          setStambuk(userPesertaId)
+          setIdPeserta(userPesertaId)
 
           // Fetch grades by id_peserta
           const { data: dataNew } = await supabase
@@ -166,12 +166,12 @@ export default function PesertaDashboard() {
             </div>
             <div className="mt-6 sm:mt-0 p-4 bg-black/40 rounded-2xl backdrop-blur-sm border border-yellow-500/30">
               <p className="text-xs text-gray-300 mb-1 uppercase tracking-wider">NIP / No. Registrasi</p>
-              <p className="text-2xl font-black text-[#FFF000] tracking-widest">{stambuk || (isSuperadmin ? 'PREVIEW MODE' : 'TIDAK ADA')}</p>
+              <p className="text-2xl font-black text-[#FFF000] tracking-widest">{idPeserta || (isSuperadmin ? 'PREVIEW MODE' : 'TIDAK ADA')}</p>
             </div>
           </div>
 
           <div className="p-6 sm:p-12">
-            {!stambuk && !isSuperadmin ? (
+            {!idPeserta && !isSuperadmin ? (
               <div className="text-center py-12">
                 <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No. Registrasi Tidak Ditemukan</h2>
@@ -181,7 +181,7 @@ export default function PesertaDashboard() {
               <div className="text-center py-16 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-gray-300 dark:border-slate-700">
                 <BookOpen className="w-16 h-16 text-amber-500/60 mx-auto mb-4" />
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Belum Ada Nilai Ujian</h2>
-                <p className="text-gray-500 dark:text-gray-400">Nilai ujian diklat untuk No. Registrasi <strong>{stambuk || 'Peserta'}</strong> belum dipublikasikan oleh tim instruktur BDTBT.</p>
+                <p className="text-gray-500 dark:text-gray-400">Nilai ujian diklat untuk No. Registrasi <strong>{idPeserta || 'Peserta'}</strong> belum dipublikasikan oleh tim instruktur BDTBT.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">

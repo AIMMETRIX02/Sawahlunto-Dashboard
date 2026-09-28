@@ -15,6 +15,15 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/mahasiswa',
+        destination: '/peserta',
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {

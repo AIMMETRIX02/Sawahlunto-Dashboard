@@ -92,7 +92,7 @@ BEGIN
         COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
         COALESCE(NEW.raw_user_meta_data->>'id_peserta', NEW.raw_user_meta_data->>'stambuk'),
         COALESCE(NEW.raw_user_meta_data->>'instansi', 'BDTBT ESDM'),
-        COALESCE(NEW.raw_user_meta_data->>'role', 'mahasiswa')
+        COALESCE(NEW.raw_user_meta_data->>'role', 'peserta')
     );
     RETURN NEW;
 END;

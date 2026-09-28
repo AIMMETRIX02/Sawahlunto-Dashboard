@@ -285,7 +285,7 @@ export function Navbar() {
                   </div>
                   <button onClick={() => handleNavClick('portal-dosen')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-gray-100">
                     <LayoutDashboard className="h-5 w-5 text-gray-400" />
-                    <span>Portal Dosen / Admin</span>
+                    <span>Portal Instruktur / Admin</span>
                   </button>
                   <button onClick={() => handleNavClick('portal-peserta')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-[#FFF000] font-semibold">
                     <User className="h-5 w-5 text-[#FFF000]" />
