@@ -1,44 +1,62 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { HardHat, Loader2, AlertCircle } from 'lucide-react'
+import { HardHat, Loader2, AlertCircle, Eye, EyeOff, AlertTriangle, Mail, CheckCircle2 } from 'lucide-react'
 
 export default function LoginPage() {
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Unverified account state
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendError, setResendError] = useState<string | null>(null)
+  
   const router = useRouter()
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(prev => prev - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [resendCooldown])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setUnverifiedEmail(null)
+    setResendSuccess(false)
+    setResendError(null)
+
+    let targetEmail = loginId.trim()
 
     try {
-      let finalEmail = loginId
-
       // If it doesn't look like an email, assume it's ID Peserta / NIP
-      if (!loginId.includes('@')) {
+      if (!targetEmail.includes('@')) {
         // Call RPC function get_email_by_id_peserta
         const { data: emailData, error: rpcError } = await supabase.rpc('get_email_by_id_peserta', { 
-          p_id_peserta: loginId.toUpperCase() 
+          p_id_peserta: targetEmail.toUpperCase() 
         })
 
         if (rpcError || !emailData) {
           throw new Error('ID Peserta / NIP tidak ditemukan. Pastikan Anda sudah terdaftar.')
         }
         
-        finalEmail = emailData
+        targetEmail = emailData
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: finalEmail,
+        email: targetEmail,
         password,
       })
 
@@ -47,15 +65,47 @@ export default function LoginPage() {
       router.push('/')
       router.refresh()
     } catch (err: any) {
-      setError(err.message || 'Gagal masuk. Periksa kembali data sandi Anda.')
+      const errMsg = err?.message || ''
+      const isUnconfirmed = 
+        errMsg.toLowerCase().includes('not confirmed') ||
+        errMsg.toLowerCase().includes('email not confirmed') ||
+        err?.code === 'email_not_confirmed'
+
+      if (isUnconfirmed) {
+        setUnverifiedEmail(targetEmail)
+      } else {
+        setError(errMsg || 'Gagal masuk. Periksa kembali data akun dan kata sandi Anda.')
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail || resendCooldown > 0) return
+    setResendLoading(true)
+    setResendSuccess(false)
+    setResendError(null)
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unverifiedEmail,
+      })
+      if (error) throw error
+      setResendSuccess(true)
+      setResendCooldown(60)
+    } catch (err: any) {
+      setResendError(err.message || 'Gagal mengirim ulang email verifikasi. Coba lagi beberapa saat lagi.')
+    } finally {
+      setResendLoading(false)
     }
   }
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     setError(null)
+    setUnverifiedEmail(null)
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -90,10 +140,58 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-slate-900 py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-gray-100 dark:border-slate-800">
           
+          {/* General Error Banner */}
           {error && (
-            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-md flex items-start">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 rounded-xl flex items-start">
               <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Unverified Account Notification */}
+          {unverifiedEmail && (
+            <div className="mb-6 bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-500/40 p-4 rounded-2xl shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-start">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/60 rounded-xl mr-3 shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-[#FFF000]" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                    Akun Belum Diverifikasi!
+                  </h4>
+                  <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-300 leading-relaxed">
+                    Email <span className="font-semibold underline break-all">{unverifiedEmail}</span> belum diverifikasi. Silakan periksa kotak masuk (inbox) atau folder spam pada email Anda untuk mengaktifkan akun.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading || resendCooldown > 0}
+                      className="inline-flex items-center text-xs font-semibold px-3 py-1.5 bg-[#1D2327] hover:bg-black text-[#FFF000] border border-yellow-500/30 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      {resendLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                      ) : (
+                        <Mail className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      {resendCooldown > 0 ? `Kirim Ulang (${resendCooldown}s)` : 'Kirim Ulang Email Verifikasi'}
+                    </button>
+
+                    {resendSuccess && (
+                      <span className="text-xs text-green-700 dark:text-green-400 font-semibold inline-flex items-center">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" /> Tautan aktivasi terkirim!
+                      </span>
+                    )}
+
+                    {resendError && (
+                      <span className="text-xs text-red-600 dark:text-red-400">
+                        {resendError}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -106,7 +204,10 @@ export default function LoginPage() {
                 type="text"
                 required
                 value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
+                onChange={(e) => {
+                  setLoginId(e.target.value)
+                  if (unverifiedEmail) setUnverifiedEmail(null)
+                }}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all"
                 placeholder="Misal: REG-2026-001 atau peserta@esdm.go.id"
               />
@@ -116,14 +217,28 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Kata Sandi
               </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-4 pr-11 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none"
+                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <button
@@ -177,3 +292,4 @@ export default function LoginPage() {
     </div>
   )
 }
+
