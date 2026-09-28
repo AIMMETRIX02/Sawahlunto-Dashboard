@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, AlertTriangle } from 'lucide-react'
 
 interface DeleteModalProps {
@@ -9,10 +11,16 @@ interface DeleteModalProps {
 }
 
 export function DeleteModal({ isOpen, onClose, onConfirm, studentName, isDeleting }: DeleteModalProps) {
-  if (!isOpen) return null
+  const [mounted, setMounted] = useState(false)
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!isOpen || !mounted) return null
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden p-6 text-center transition-colors">
         <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-500" />
@@ -40,4 +48,6 @@ export function DeleteModal({ isOpen, onClose, onConfirm, studentName, isDeletin
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

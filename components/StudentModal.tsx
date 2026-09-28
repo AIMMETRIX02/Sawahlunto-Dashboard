@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { StudentData } from './StudentTable'
 
@@ -48,6 +49,11 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
     motor_fan: false,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (initialData) {
@@ -96,7 +102,7 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
     }
   }, [initialData, isOpen])
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,9 +121,9 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
     setFormData(prev => ({ ...prev, [field]: !prev[field] }))
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors border border-gray-100 dark:border-slate-800">
+  const modalContent = (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors border border-gray-100 dark:border-slate-800 my-auto">
         
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-[#1D2327]">
           <div>
@@ -286,4 +292,6 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

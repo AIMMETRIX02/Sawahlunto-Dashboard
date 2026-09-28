@@ -680,7 +680,7 @@ export function StudentTable() {
       />
 
       {isThresholdModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden p-6 text-center">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Ubah Standar Kelulusan Prosedur Diklat</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
