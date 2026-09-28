@@ -1,10 +1,10 @@
 'use client'
 
-import { LayoutDashboard, Settings, User, Moon, Sun, Menu, CheckCircle, AlertCircle, X, LogOut, ChevronDown, HardHat, Building2, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, Settings, User, Moon, Sun, Menu, CheckCircle, AlertCircle, X, LogOut, ChevronDown, HardHat, Building2, ShieldCheck, Crown } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 // Custom Toast Component for Navbar
 const NavToast = ({ message, type, onClose }: { message: string, type: 'success' | 'info', onClose: () => void }) => {
@@ -37,6 +37,7 @@ export function Navbar() {
   const [role, setRole] = useState<string | null>(null)
 
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     const getRole = async () => {
@@ -56,6 +57,8 @@ export function Navbar() {
       } else {
         router.push('/')
       }
+    } else if (menu === 'superadmin' || menu === 'kelola-akun') {
+      router.push('/superadmin')
     } else if (menu === 'settings') {
       setToast({ message: 'Fitur Pengaturan sedang dalam tahap pengembangan', type: 'info' })
     } else if (menu === 'profile') {
@@ -127,11 +130,28 @@ export function Navbar() {
               {/* Menu Links */}
               <button 
                 onClick={() => handleNavClick('dashboard')} 
-                className="px-3.5 py-2 text-sm font-semibold rounded-lg hover:bg-white/10 text-gray-200 hover:text-[#FFF000] transition-colors flex items-center"
+                className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center ${
+                  pathname === '/' ? 'bg-white/10 text-[#FFF000] font-bold' : 'hover:bg-white/10 text-gray-200 hover:text-[#FFF000]'
+                }`}
               >
                 <LayoutDashboard className="h-4 w-4 mr-2 text-[#FFF000]" />
                 Beranda
               </button>
+
+              {/* Superadmin Dedicated Account Management Link */}
+              {role === 'superadmin' && (
+                <button 
+                  onClick={() => handleNavClick('superadmin')} 
+                  className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition-all flex items-center ${
+                    pathname === '/superadmin'
+                      ? 'bg-[#FFF000] text-black font-bold shadow-md'
+                      : 'hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-500/40'
+                  }`}
+                >
+                  <Crown className={`h-4 w-4 mr-2 ${pathname === '/superadmin' ? 'text-black' : 'text-purple-400'}`} />
+                  Kelola Akun
+                </button>
+              )}
 
               <button 
                 onClick={() => setToast({ message: 'Informasi Diklat Pertambangan dapat diakses di portal peserta', type: 'info' })} 
@@ -180,11 +200,18 @@ export function Navbar() {
                 {isSettingsOpen && role === 'superadmin' && (
                   <>
                     <div className="fixed inset-0 z-[-1]" onClick={() => setIsSettingsOpen(false)}></div>
-                    <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl py-2 border border-gray-100 dark:border-slate-800 z-50 animate-in fade-in slide-in-from-top-2 text-slate-800 dark:text-slate-100">
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl py-2 border border-gray-100 dark:border-slate-800 z-50 animate-in fade-in slide-in-from-top-2 text-slate-800 dark:text-slate-100">
                       <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-800 mb-1">
                         <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Superadmin Mode</p>
                       </div>
                       
+                      <button 
+                        onClick={() => handleNavClick('superadmin')} 
+                        className="flex items-center w-full px-4 py-2.5 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-bold transition-colors"
+                      >
+                        <Crown className="h-4 w-4 mr-3 text-purple-500" /> Kelola Akun & Hak Akses
+                      </button>
+
                       <button 
                         onClick={() => handleNavClick('portal-dosen')} 
                         className="flex items-center w-full px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
@@ -283,6 +310,10 @@ export function Navbar() {
                   <div className="px-3 pt-3 pb-1 border-t border-gray-700/50 mt-2">
                     <p className="text-xs font-bold text-[#FFF000] uppercase tracking-wider">Superadmin Mode</p>
                   </div>
+                  <button onClick={() => handleNavClick('superadmin')} className="flex items-center space-x-3 w-full p-3 hover:bg-purple-900/30 rounded-xl transition-colors text-left text-purple-300 font-bold">
+                    <Crown className="h-5 w-5 text-purple-400" />
+                    <span>Kelola Akun & Hak Akses</span>
+                  </button>
                   <button onClick={() => handleNavClick('portal-dosen')} className="flex items-center space-x-3 w-full p-3 hover:bg-white/10 rounded-xl transition-colors text-left text-gray-100">
                     <LayoutDashboard className="h-5 w-5 text-gray-400" />
                     <span>Portal Instruktur / Admin</span>
