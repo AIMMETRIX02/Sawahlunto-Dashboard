@@ -28,11 +28,15 @@ export default function ProfilePage() {
         return
       }
       
-      const { data: profile } = await supabase.from('profiles').select('nama').eq('id', session.user.id).single()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', session.user.id)
+        .maybeSingle()
       
       setUser(session.user)
       setEmail(session.user.email || '')
-      setFullName(profile?.nama || session.user.user_metadata?.full_name || '')
+      setFullName(profile?.full_name || session.user.user_metadata?.full_name || '')
       setLoading(false)
     }
 
@@ -57,17 +61,20 @@ export default function ProfilePage() {
     setMessage(null)
 
     try {
-      // 1. Update nama in profiles table
+      // 1. Update full_name in profiles table
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ nama: fullName })
+        .update({ 
+          full_name: fullName.trim(),
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id)
         
       if (profileError) throw profileError
 
       // 2. Update metadata as fallback (optional, but good for sync)
       const updates: any = {
-        data: { full_name: fullName, nama: fullName }
+        data: { full_name: fullName.trim() }
       }
 
       // 3. Update password if provided
