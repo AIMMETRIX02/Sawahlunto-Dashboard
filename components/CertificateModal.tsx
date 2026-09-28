@@ -75,48 +75,56 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
             <div className="absolute bottom-6 left-6 w-12 h-12 border-b-4 border-l-4 border-[#1D2327] z-20 print-border"></div>
             <div className="absolute bottom-6 right-6 w-12 h-12 border-b-4 border-r-4 border-[#1D2327] z-20 print-border"></div>
 
-            <div className="relative z-30 flex-1 flex flex-col items-center justify-center p-8 sm:p-16 text-center">
+            {/* Inner Content - Cleanly bounded inside borders */}
+            <div className="relative z-30 flex-1 flex flex-col justify-between items-center px-8 py-8 sm:px-14 sm:py-9 text-center w-full h-full">
               
-              <div className="mb-6">
-                <p className="text-sm sm:text-base font-bold tracking-[0.2em] text-[#CA8A04] uppercase mb-1">
+              {/* Header */}
+              <div className="mb-2 sm:mb-3">
+                <p className="text-xs sm:text-sm font-bold tracking-[0.2em] text-[#CA8A04] uppercase mb-0.5">
                   KEMENTERIAN ENERGI DAN SUMBER DAYA MINERAL RI
                 </p>
-                <h1 className="text-2xl sm:text-4xl font-black text-[#1D2327] tracking-wider mb-2 font-serif uppercase print-text-esdm">
+                <h1 className="text-xl sm:text-3xl font-black text-[#1D2327] tracking-wider mb-1 font-serif uppercase print-text-esdm">
                   BALAI DIKLAT TAMBANG BAWAH TANAH
                 </h1>
-                <h2 className="text-base sm:text-xl font-bold text-slate-700 tracking-[0.15em] uppercase border-b-2 border-[#EAB308] pb-2 inline-block print-border">
+                <h2 className="text-xs sm:text-base font-bold text-slate-700 tracking-[0.15em] uppercase border-b-2 border-[#EAB308] pb-1 inline-block print-border">
                   Sertifikat Kelulusan & Kompetensi Diklat
                 </h2>
               </div>
 
-              <div className="max-w-3xl mx-auto space-y-5 mt-2">
-                <p className="text-base sm:text-lg text-slate-600 font-serif italic">
+              {/* Main Body */}
+              <div className="max-w-2xl mx-auto space-y-2 sm:space-y-3 my-auto">
+                <p className="text-xs sm:text-sm text-slate-600 font-serif italic">
                   Diberikan kepada peserta pendidikan dan pelatihan pertambangan di bawah ini atas penyelesaian evaluasi kompetensi teknis:
                 </p>
 
-                <div className="py-4">
-                  <h3 className="text-2xl sm:text-4xl font-black text-[#1D2327] mb-1 font-serif uppercase print-text-esdm">{student.nama}</h3>
-                  <p className="text-base sm:text-xl font-bold text-[#CA8A04] tracking-widest">
+                <div className="py-1 sm:py-2">
+                  <h3 className="text-xl sm:text-3xl font-black text-[#1D2327] mb-0.5 font-serif uppercase print-text-esdm">
+                    {student.nama}
+                  </h3>
+                  <p className="text-xs sm:text-base font-bold text-[#CA8A04] tracking-widest">
                     ID PESERTA: {student.id_peserta} • {student.instansi || 'BDTBT ESDM'}
                   </p>
                 </div>
 
-                <p className="text-base sm:text-lg text-slate-700 font-medium leading-relaxed">
-                  Dinyatakan <span className="font-bold text-green-700 text-xl sm:text-2xl print-text-green">KOMPETEN / LULUS</span> Evaluasi Praktik Simulasi Peledakan<br/>
-                  <span className="text-xs sm:text-sm text-slate-600 font-semibold">
+                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
+                  Dinyatakan <span className="font-bold text-green-700 text-sm sm:text-lg print-text-green">KOMPETEN / LULUS</span> Evaluasi Praktik Simulasi Peledakan<br/>
+                  <span className="text-[11px] sm:text-xs text-slate-600 font-semibold">
                     Tingkat Kepatuhan Prosedur: {complianceRate}% ({completedSteps} dari 11 Prosedur Keselamatan & Operasional Terpenuhi)
                   </span>
                 </p>
               </div>
 
-              <div className="w-full flex justify-end mt-6 sm:mt-10 pr-4 sm:pr-12">
-                <div className="text-center w-48 sm:w-64">
-                  <p className="text-sm sm:text-base text-slate-600 mb-1">Sawahlunto, {student.tanggal}</p>
-                  <div className="text-base font-bold text-slate-800 border-b border-slate-400 pb-12 sm:pb-14 relative">
+              {/* Signature Area */}
+              <div className="w-full flex justify-end pr-4 sm:pr-10 mt-2 sm:mt-4">
+                <div className="text-center w-44 sm:w-56">
+                  <p className="text-xs sm:text-sm text-slate-600 mb-0.5">Sawahlunto, {student.tanggal}</p>
+                  <div className="border-b border-slate-400 pb-7 sm:pb-8 relative">
                     {/* Ruang tanda tangan resmi BDTBT ESDM */}
                   </div>
-                  <p className="text-sm sm:text-base font-bold text-slate-800 mt-2">Kepala Balai Diklat Tambang Bawah Tanah</p>
-                  <p className="text-xs sm:text-sm text-slate-500">NIP. 19780515 200312 1 002</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 mt-1 leading-tight">
+                    Kepala Balai Diklat Tambang Bawah Tanah
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-slate-500">NIP. 19780515 200312 1 002</p>
                 </div>
               </div>
 
