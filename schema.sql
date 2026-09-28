@@ -36,6 +36,7 @@ ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer2_nama TEXT DE
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer2_nip TEXT DEFAULT '19780515 200312 1 002';
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.';
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nip TEXT DEFAULT '19780515 200312 1 002';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS landing_config JSONB;
 
 -- 4. Tabel landing_posts (Artikel, Blok Kustom & Dokumentasi Landing Page)
 CREATE TABLE IF NOT EXISTS public.landing_posts (

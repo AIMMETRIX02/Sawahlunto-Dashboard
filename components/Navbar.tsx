@@ -1,6 +1,6 @@
 'use client'
 
-import { LayoutDashboard, Settings, User, Moon, Sun, Menu, CheckCircle, AlertCircle, X, LogOut, ChevronDown, HardHat, Crown, GraduationCap, Award, Home, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Settings, User, Moon, Sun, Menu, CheckCircle, AlertCircle, X, LogOut, ChevronDown, HardHat, Crown, GraduationCap, Award, Home, Sparkles, Globe } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -78,6 +78,8 @@ export function Navbar() {
       router.push('/peserta')
     } else if (menu === 'settings-balai') {
       setIsBalaiSettingsOpen(true)
+    } else if (menu === 'landing-editor') {
+      router.push('/admin/landing-editor')
     } else if (menu === 'about-developer') {
       router.push('/developer')
     } else if (menu === 'profile') {
@@ -218,6 +220,14 @@ export function Navbar() {
                           <Crown className="h-4 w-4 mr-3 text-purple-500" /> Kelola Akun & Hak Akses
                         </button>
 
+                        {/* Website Editor (Landing Page) */}
+                        <button 
+                          onClick={() => handleNavClick('landing-editor')} 
+                          className="flex items-center w-full px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold transition-colors"
+                        >
+                          <Globe className="h-4 w-4 mr-3 text-blue-500" /> Website Editor (Landing Page)
+                        </button>
+
                         {/* Pengaturan Kepala Balai & Sertifikat */}
                         <button 
                           onClick={() => handleNavClick('settings-balai')} 
@@ -348,6 +358,10 @@ export function Navbar() {
                   <button onClick={() => handleNavClick('superadmin')} className="flex items-center space-x-3 w-full p-3 hover:bg-purple-900/30 rounded-xl transition-colors text-left text-purple-300 font-bold">
                     <Crown className="h-5 w-5 text-purple-400" />
                     <span>Kelola Akun & Hak Akses</span>
+                  </button>
+                  <button onClick={() => handleNavClick('landing-editor')} className="flex items-center space-x-3 w-full p-3 hover:bg-blue-900/30 rounded-xl transition-colors text-left text-blue-300 font-bold">
+                    <Globe className="h-5 w-5 text-blue-400" />
+                    <span>Website Editor (Landing Page)</span>
                   </button>
                   <button onClick={() => handleNavClick('settings-balai')} className="flex items-center space-x-3 w-full p-3 hover:bg-amber-900/30 rounded-xl transition-colors text-left text-amber-300 font-semibold">
                     <Award className="h-5 w-5 text-amber-400" />

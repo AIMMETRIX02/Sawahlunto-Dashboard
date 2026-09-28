@@ -78,7 +78,114 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
   if (!isOpen || !student || !mounted) return null
 
   const handlePrint = () => {
-    window.print()
+    const printArea = document.getElementById('certificate-print-area')
+    if (!printArea) {
+      window.print()
+      return
+    }
+
+    // Create an isolated hidden iframe specifically for printing exactly 1 page
+    const iframe = document.createElement('iframe')
+    iframe.id = 'certificate-print-iframe'
+    iframe.style.position = 'fixed'
+    iframe.style.left = '-9999px'
+    iframe.style.top = '-9999px'
+    iframe.style.width = '297mm'
+    iframe.style.height = '209mm'
+    iframe.style.border = '0'
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow?.document
+    if (!doc) {
+      window.print()
+      return
+    }
+
+    // Copy styles from main document
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(el => el.outerHTML)
+      .join('\n')
+
+    doc.open()
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Sertifikat_Kompetensi_${(student.nama || 'Peserta').replace(/[^a-zA-Z0-9]/g, '_')}</title>
+          ${styles}
+          <style>
+            @page {
+              size: 297mm 210mm landscape;
+              margin: 0 !important;
+            }
+            *, *::before, *::after {
+              box-sizing: border-box !important;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 297mm !important;
+              height: 209mm !important;
+              max-height: 209mm !important;
+              overflow: hidden !important;
+              background-color: #fafaf9 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            #certificate-print-area {
+              width: 297mm !important;
+              height: 209mm !important;
+              max-width: 297mm !important;
+              max-height: 209mm !important;
+              min-height: 209mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+              page-break-inside: avoid !important;
+              break-after: avoid !important;
+              break-inside: avoid !important;
+            }
+            .print-border {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print-text-esdm {
+              color: #1D2327 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print-text-green {
+              color: #15803d !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; background: #fafaf9;">
+          ${printArea.outerHTML}
+        </body>
+      </html>
+    `)
+    doc.close()
+
+    // Wait for fonts to be ready inside iframe
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+      } catch (e) {
+        window.print()
+      } finally {
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe)
+          }
+        }, 1500)
+      }
+    }, 350)
   }
 
   const completedSteps = [

@@ -18,28 +18,57 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Print CSS setup for Certificate */
+/* Print CSS setup for Certificate (Single Page Guaranteed) */
 @media print {
-  /* Sembunyikan elemen utama dashboard */
-  #dashboard-main {
+  @page {
+    size: 297mm 210mm landscape;
+    margin: 0 !important;
+  }
+
+  html, body {
+    width: 297mm !important;
+    height: 209mm !important;
+    max-height: 209mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #fafaf9 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Sembunyikan semua elemen navbar, dashboard, footer saat cetak */
+  #dashboard-main,
+  nav,
+  footer,
+  header,
+  .print\:hidden {
     display: none !important;
   }
   
-  /* Posisikan sertifikat ke ujung kiri atas kertas */
+  /* Posisikan sertifikat pas satu halaman A4 */
   #certificate-print-area {
     position: fixed !important;
-    left: 0;
-    top: 0;
-    width: 297mm !important; /* A4 width */
-    height: 210mm !important; /* A4 height */
+    left: 0 !important;
+    top: 0 !important;
+    width: 297mm !important;
+    height: 209mm !important;
+    max-width: 297mm !important;
+    max-height: 209mm !important;
+    min-height: 209mm !important;
     margin: 0 !important;
     padding: 0 !important;
-    background-color: #fafaf9 !important; /* stone-50 */
+    background-color: #fafaf9 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     box-shadow: none !important;
     border: none !important;
-    z-index: 9999;
+    overflow: hidden !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    z-index: 99999;
   }
 
   /* Pastikan elemen dekorasi border tetap tercetak dengan warnanya */
@@ -65,10 +94,5 @@ body {
   .print-opacity {
     opacity: 0.4 !important;
     border-color: rgba(29, 35, 39, 0.4) !important;
-  }
-
-  @page {
-    size: A4 landscape;
-    margin: 0;
   }
 }
