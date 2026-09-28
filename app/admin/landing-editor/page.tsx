@@ -294,7 +294,7 @@ export default function LandingEditorPage() {
       )}
 
       {/* Editor Sub-Header Toolbar */}
-      <div className="bg-[#12161A] border-b border-yellow-500/30 sticky top-20 z-40 px-4 sm:px-8 py-3.5 shadow-xl">
+      <div className="bg-[#12161A] border-b border-yellow-500/30 px-4 sm:px-8 py-3.5 shadow-xl">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <Link
@@ -363,7 +363,14 @@ export default function LandingEditorPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Navigation Tabs */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-4 border-b border-slate-800 no-scrollbar mb-8">
+        <div 
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY
+            }
+          }}
+          className="flex items-center space-x-2 overflow-x-auto pb-4 border-b border-slate-800 no-scrollbar mb-8"
+        >
           {[
             { id: 'hero', label: '1. Hero & Header', icon: FileText },
             { id: 'gallery', label: '2. Galeri Foto VR', icon: ImageIcon },
@@ -1021,7 +1028,7 @@ export default function LandingEditorPage() {
                 <Layers className="w-10 h-10 mx-auto text-gray-500 mb-3" />
                 <p className="font-bold text-sm text-gray-300">Belum ada blok kustom tambahan</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Klik tombol "+ Buat Blok Baru" di atas untuk menambahkan seksi baru ke landing page.
+                  Klik tombol &quot;+ Buat Blok Baru&quot; di atas untuk menambahkan seksi baru ke landing page.
                 </p>
               </div>
             ) : (
