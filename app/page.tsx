@@ -144,11 +144,11 @@ export default function LandingPage() {
     const targetUrl = url || config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'
     const targetName = fileName || config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'
     
+    const downloadEndpoint = `/api/download?filename=${encodeURIComponent(targetName)}&url=${encodeURIComponent(targetUrl)}`
+    
     const link = document.createElement('a')
-    link.href = targetUrl
+    link.href = downloadEndpoint
     link.setAttribute('download', targetName)
-    link.target = '_blank'
-    link.rel = 'noopener noreferrer'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -667,9 +667,7 @@ export default function LandingPage() {
             </div>
 
             <a
-              href={config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/api/download?filename=${encodeURIComponent(config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf')}&url=${encodeURIComponent(config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf')}`}
               download={config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'}
               onClick={() => {
                 setDownloadToast(`Memulai unduhan berkas: ${config.download.buttonText}...`)
