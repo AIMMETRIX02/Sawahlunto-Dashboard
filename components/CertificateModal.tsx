@@ -5,7 +5,14 @@ import { StudentData } from './StudentTable'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
-import { DEFAULT_KEPALA_NAMA, DEFAULT_KEPALA_NIP } from './BalaiSettingsModal'
+import { 
+  DEFAULT_SIGNER1_JABATAN, 
+  DEFAULT_SIGNER1_NAMA, 
+  DEFAULT_SIGNER1_NIP,
+  DEFAULT_SIGNER2_JABATAN, 
+  DEFAULT_SIGNER2_NAMA, 
+  DEFAULT_SIGNER2_NIP 
+} from './BalaiSettingsModal'
 
 interface CertificateModalProps {
   isOpen: boolean
@@ -15,8 +22,13 @@ interface CertificateModalProps {
 
 export function CertificateModal({ isOpen, onClose, student }: CertificateModalProps) {
   const [mounted, setMounted] = useState(false)
-  const [kepalaNama, setKepalaNama] = useState(DEFAULT_KEPALA_NAMA)
-  const [kepalaNip, setKepalaNip] = useState(DEFAULT_KEPALA_NIP)
+  const [signer1Jabatan, setSigner1Jabatan] = useState(DEFAULT_SIGNER1_JABATAN)
+  const [signer1Nama, setSigner1Nama] = useState(DEFAULT_SIGNER1_NAMA)
+  const [signer1Nip, setSigner1Nip] = useState(DEFAULT_SIGNER1_NIP)
+
+  const [signer2Jabatan, setSigner2Jabatan] = useState(DEFAULT_SIGNER2_JABATAN)
+  const [signer2Nama, setSigner2Nama] = useState(DEFAULT_SIGNER2_NAMA)
+  const [signer2Nip, setSigner2Nip] = useState(DEFAULT_SIGNER2_NIP)
   
   useEffect(() => {
     setMounted(true)
@@ -28,20 +40,30 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
         if (local) {
           try {
             const parsed = JSON.parse(local)
-            if (parsed.kepala_nama) setKepalaNama(parsed.kepala_nama)
-            if (parsed.kepala_nip) setKepalaNip(parsed.kepala_nip)
+            if (parsed.signer1_jabatan) setSigner1Jabatan(parsed.signer1_jabatan)
+            if (parsed.signer1_nama) setSigner1Nama(parsed.signer1_nama)
+            if (parsed.signer1_nip) setSigner1Nip(parsed.signer1_nip)
+
+            if (parsed.signer2_jabatan) setSigner2Jabatan(parsed.signer2_jabatan)
+            if (parsed.signer2_nama || parsed.kepala_nama) setSigner2Nama(parsed.signer2_nama || parsed.kepala_nama)
+            if (parsed.signer2_nip || parsed.kepala_nip) setSigner2Nip(parsed.signer2_nip || parsed.kepala_nip)
           } catch (e) {}
         }
 
         const { data } = await supabase
           .from('system_settings')
-          .select('kepala_nama, kepala_nip')
+          .select('*')
           .eq('id', 1)
           .maybeSingle()
 
         if (data) {
-          if (data.kepala_nama) setKepalaNama(data.kepala_nama)
-          if (data.kepala_nip) setKepalaNip(data.kepala_nip)
+          if (data.signer1_jabatan) setSigner1Jabatan(data.signer1_jabatan)
+          if (data.signer1_nama) setSigner1Nama(data.signer1_nama)
+          if (data.signer1_nip) setSigner1Nip(data.signer1_nip)
+
+          if (data.signer2_jabatan) setSigner2Jabatan(data.signer2_jabatan)
+          if (data.signer2_nama || data.kepala_nama) setSigner2Nama(data.signer2_nama || data.kepala_nama)
+          if (data.signer2_nip || data.kepala_nip) setSigner2Nip(data.signer2_nip || data.kepala_nip)
         }
       } catch (err) {
         console.warn('Gagal memuat info penandatangan sertifikat:', err)
@@ -149,20 +171,36 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
                 </p>
               </div>
 
-              {/* Signature Area */}
-              <div className="w-full flex justify-end pr-4 sm:pr-10 mt-2 sm:mt-4">
-                <div className="text-center w-48 sm:w-60">
-                  <p className="text-xs sm:text-sm text-slate-600 mb-0.5">Sawahlunto, {student.tanggal}</p>
+              {/* Dual Signature Area (Left & Right) */}
+              <div className="w-full flex justify-between items-end px-4 sm:px-8 mt-2 sm:mt-4">
+                {/* Left Signer (Signer 1 - Pengajar/Instruktur) */}
+                <div className="text-center w-48 sm:w-56">
+                  <p className="text-xs sm:text-sm text-slate-500 mb-0.5">&nbsp;</p>
                   <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
-                    Kepala Balai Diklat Tambang Bawah Tanah
+                    {signer1Jabatan}
                   </p>
                   <div className="border-b border-slate-400 pb-7 sm:pb-8 relative">
-                    {/* Ruang tanda tangan resmi BDTBT ESDM */}
+                    {/* Ruang tanda tangan resmi */}
                   </div>
                   <p className="text-xs sm:text-sm font-bold text-slate-900 mt-1 leading-tight font-serif uppercase underline decoration-1 underline-offset-2">
-                    {kepalaNama}
+                    {signer1Nama}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-slate-600 font-mono">NIP. {kepalaNip}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 font-mono">NIP. {signer1Nip}</p>
+                </div>
+
+                {/* Right Signer (Signer 2 - Kepala Balai / Pengesah) */}
+                <div className="text-center w-48 sm:w-56">
+                  <p className="text-xs sm:text-sm text-slate-600 mb-0.5">Sawahlunto, {student.tanggal}</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                    {signer2Jabatan}
+                  </p>
+                  <div className="border-b border-slate-400 pb-7 sm:pb-8 relative">
+                    {/* Ruang tanda tangan resmi */}
+                  </div>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 mt-1 leading-tight font-serif uppercase underline decoration-1 underline-offset-2">
+                    {signer2Nama}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 font-mono">NIP. {signer2Nip}</p>
                 </div>
               </div>
 

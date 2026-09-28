@@ -27,9 +27,31 @@ ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS motor_fan BOOLEAN DEFAUL
 -- 2. Tabel profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS instansi TEXT DEFAULT 'Balai Diklat Tambang Bawah Tanah';
 
--- 3. Tabel system_settings (Info Penandatangan Sertifikat & Ambang Kelulusan)
+-- 3. Tabel system_settings (Info Penandatangan Sertifikat: 2 Penandatangan Kiri & Kanan)
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer1_jabatan TEXT DEFAULT 'Instruktur / Pengajar Praktik';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer1_nama TEXT DEFAULT 'Ir. Bambang Trihatmojo, S.T., M.T.';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer1_nip TEXT DEFAULT '19820314 200801 1 007';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer2_jabatan TEXT DEFAULT 'Kepala Balai Diklat Tambang Bawah Tanah';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer2_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS signer2_nip TEXT DEFAULT '19780515 200312 1 002';
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.';
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nip TEXT DEFAULT '19780515 200312 1 002';
+
+-- 4. Tabel landing_posts (Artikel, Blok Kustom & Dokumentasi Landing Page)
+CREATE TABLE IF NOT EXISTS public.landing_posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT DEFAULT 'article', -- 'article', 'block', 'gallery'
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    category TEXT DEFAULT 'Berita Diklat',
+    content TEXT,
+    image_url TEXT,
+    author TEXT DEFAULT 'Super Admin',
+    is_published BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.landing_posts DISABLE ROW LEVEL SECURITY;
 
 
 -- ------------------------------------------------------------------------------
@@ -73,19 +95,51 @@ CREATE TABLE IF NOT EXISTS public.hasil_ujian (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. TABEL SYSTEM SETTINGS (Standar Kelulusan & Info Penandatangan Sertifikat)
+-- 3. TABEL SYSTEM SETTINGS (Standar Kelulusan & Info 2 Penandatangan Sertifikat)
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id INT PRIMARY KEY DEFAULT 1,
     passing_threshold INT NOT NULL DEFAULT 35,
+    signer1_jabatan TEXT DEFAULT 'Instruktur / Pengajar Praktik',
+    signer1_nama TEXT DEFAULT 'Ir. Bambang Trihatmojo, S.T., M.T.',
+    signer1_nip TEXT DEFAULT '19820314 200801 1 007',
+    signer2_jabatan TEXT DEFAULT 'Kepala Balai Diklat Tambang Bawah Tanah',
+    signer2_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.',
+    signer2_nip TEXT DEFAULT '19780515 200312 1 002',
     kepala_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.',
     kepala_nip TEXT DEFAULT '19780515 200312 1 002',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert nilai awal standar lulus dan kepala balai jika belum ada
-INSERT INTO public.system_settings (id, passing_threshold, kepala_nama, kepala_nip)
-VALUES (1, 35, 'Drs. H. Hendra Gunawan, M.T.', '19780515 200312 1 002')
+-- Insert nilai awal standar lulus dan 2 penandatangan jika belum ada
+INSERT INTO public.system_settings (
+    id, passing_threshold,
+    signer1_jabatan, signer1_nama, signer1_nip,
+    signer2_jabatan, signer2_nama, signer2_nip,
+    kepala_nama, kepala_nip
+)
+VALUES (
+    1, 35,
+    'Instruktur / Pengajar Praktik', 'Ir. Bambang Trihatmojo, S.T., M.T.', '19820314 200801 1 007',
+    'Kepala Balai Diklat Tambang Bawah Tanah', 'Drs. H. Hendra Gunawan, M.T.', '19780515 200312 1 002',
+    'Drs. H. Hendra Gunawan, M.T.', '19780515 200312 1 002'
+)
 ON CONFLICT (id) DO NOTHING;
+
+-- 4. TABEL LANDING POSTS (Artikel & Blok Kustom Landing Page)
+CREATE TABLE IF NOT EXISTS public.landing_posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT DEFAULT 'article', -- 'article', 'block', 'gallery'
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    category TEXT DEFAULT 'Berita Diklat',
+    content TEXT,
+    image_url TEXT,
+    author TEXT DEFAULT 'Super Admin',
+    is_published BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.landing_posts DISABLE ROW LEVEL SECURITY;
 
 -- 4. FUNGSI & TRIGGER OTOMATIS SAAT USER REGISTRASI
 CREATE OR REPLACE FUNCTION public.handle_new_user()
