@@ -27,6 +27,10 @@ ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS motor_fan BOOLEAN DEFAUL
 -- 2. Tabel profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS instansi TEXT DEFAULT 'Balai Diklat Tambang Bawah Tanah';
 
+-- 3. Tabel system_settings (Info Penandatangan Sertifikat & Ambang Kelulusan)
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.';
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS kepala_nip TEXT DEFAULT '19780515 200312 1 002';
+
 
 -- ------------------------------------------------------------------------------
 -- OPSION B: SKRIP LENGKAP UTUH (JIKA MEMBUAT TABEL DARI AWAL / FRESH INSTALL)
@@ -69,16 +73,18 @@ CREATE TABLE IF NOT EXISTS public.hasil_ujian (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. TABEL SYSTEM SETTINGS (Standar Kelulusan)
+-- 3. TABEL SYSTEM SETTINGS (Standar Kelulusan & Info Penandatangan Sertifikat)
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id INT PRIMARY KEY DEFAULT 1,
     passing_threshold INT NOT NULL DEFAULT 35,
+    kepala_nama TEXT DEFAULT 'Drs. H. Hendra Gunawan, M.T.',
+    kepala_nip TEXT DEFAULT '19780515 200312 1 002',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert nilai awal standar lulus jika belum ada
-INSERT INTO public.system_settings (id, passing_threshold)
-VALUES (1, 35)
+-- Insert nilai awal standar lulus dan kepala balai jika belum ada
+INSERT INTO public.system_settings (id, passing_threshold, kepala_nama, kepala_nip)
+VALUES (1, 35, 'Drs. H. Hendra Gunawan, M.T.', '19780515 200312 1 002')
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. FUNGSI & TRIGGER OTOMATIS SAAT USER REGISTRASI

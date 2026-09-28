@@ -34,8 +34,10 @@ import {
   Shield, 
   ArrowLeft,
   Calendar,
-  Lock
+  Lock,
+  Award
 } from 'lucide-react'
+import { BalaiSettingsModal } from '@/components/BalaiSettingsModal'
 
 interface UserProfile {
   id: string
@@ -111,6 +113,7 @@ export default function SuperadminPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isResetPwdModalOpen, setIsResetPwdModalOpen] = useState(false)
+  const [isBalaiSettingsOpen, setIsBalaiSettingsOpen] = useState(false)
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null)
 
   // Form State - Add User
@@ -592,21 +595,31 @@ export default function SuperadminPage() {
             </div>
 
             {/* Top Quick Actions */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => router.push('/')}
-                className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition-all hover:scale-[1.02]"
+                className="inline-flex items-center px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition-all hover:scale-[1.02]"
+                title="Kembali ke Landing Page Simulator VR"
               >
-                <ArrowLeft className="w-4 h-4 mr-2 text-[#FFF000]" />
-                Dashboard Evaluasi
+                <ArrowLeft className="w-4 h-4 mr-1.5 text-[#FFF000]" />
+                Beranda VR
+              </button>
+
+              <button
+                onClick={() => router.push('/admin')}
+                className="inline-flex items-center px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition-all hover:scale-[1.02]"
+                title="Buka Portal LMS Evaluasi Ujian & Nilai"
+              >
+                <GraduationCap className="w-4 h-4 mr-1.5 text-[#FFF000]" />
+                Portal LMS Admin
               </button>
 
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-bold bg-[#FFF000] text-black hover:bg-yellow-400 shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.02] uppercase tracking-wider"
+                className="inline-flex items-center px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#FFF000] text-black hover:bg-yellow-400 shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.02] uppercase tracking-wider"
               >
-                <UserPlus className="w-4 h-4 mr-2 stroke-[2.5]" />
-                Tambah Akun Baru
+                <UserPlus className="w-4 h-4 mr-1.5 stroke-[2.5]" />
+                Tambah Akun
               </button>
             </div>
           </div>
@@ -1374,6 +1387,15 @@ export default function SuperadminPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Pengaturan Kepala Balai & Sertifikat */}
+      <BalaiSettingsModal
+        isOpen={isBalaiSettingsOpen}
+        onClose={() => setIsBalaiSettingsOpen(false)}
+        onSaved={() => {
+          setToast({ message: 'Pengaturan Kepala Balai dan NIP berhasil disimpan!', type: 'success' })
+        }}
+      />
 
     </div>
   )

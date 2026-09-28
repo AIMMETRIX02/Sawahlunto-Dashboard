@@ -4,6 +4,8 @@ import { X, Printer } from 'lucide-react'
 import { StudentData } from './StudentTable'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { supabase } from '@/lib/supabase'
+import { DEFAULT_KEPALA_NAMA, DEFAULT_KEPALA_NIP } from './BalaiSettingsModal'
 
 interface CertificateModalProps {
   isOpen: boolean
@@ -13,10 +15,43 @@ interface CertificateModalProps {
 
 export function CertificateModal({ isOpen, onClose, student }: CertificateModalProps) {
   const [mounted, setMounted] = useState(false)
+  const [kepalaNama, setKepalaNama] = useState(DEFAULT_KEPALA_NAMA)
+  const [kepalaNip, setKepalaNip] = useState(DEFAULT_KEPALA_NIP)
   
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Fetch certificate signer info
+    const fetchSigner = async () => {
+      try {
+        const local = localStorage.getItem('bdtbt_system_settings')
+        if (local) {
+          try {
+            const parsed = JSON.parse(local)
+            if (parsed.kepala_nama) setKepalaNama(parsed.kepala_nama)
+            if (parsed.kepala_nip) setKepalaNip(parsed.kepala_nip)
+          } catch (e) {}
+        }
+
+        const { data } = await supabase
+          .from('system_settings')
+          .select('kepala_nama, kepala_nip')
+          .eq('id', 1)
+          .maybeSingle()
+
+        if (data) {
+          if (data.kepala_nama) setKepalaNama(data.kepala_nama)
+          if (data.kepala_nip) setKepalaNip(data.kepala_nip)
+        }
+      } catch (err) {
+        console.warn('Gagal memuat info penandatangan sertifikat:', err)
+      }
+    }
+
+    if (isOpen) {
+      fetchSigner()
+    }
+  }, [isOpen])
 
   if (!isOpen || !student || !mounted) return null
 
@@ -116,15 +151,18 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
 
               {/* Signature Area */}
               <div className="w-full flex justify-end pr-4 sm:pr-10 mt-2 sm:mt-4">
-                <div className="text-center w-44 sm:w-56">
+                <div className="text-center w-48 sm:w-60">
                   <p className="text-xs sm:text-sm text-slate-600 mb-0.5">Sawahlunto, {student.tanggal}</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 leading-tight">
+                    Kepala Balai Diklat Tambang Bawah Tanah
+                  </p>
                   <div className="border-b border-slate-400 pb-7 sm:pb-8 relative">
                     {/* Ruang tanda tangan resmi BDTBT ESDM */}
                   </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-800 mt-1 leading-tight">
-                    Kepala Balai Diklat Tambang Bawah Tanah
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 mt-1 leading-tight font-serif uppercase underline decoration-1 underline-offset-2">
+                    {kepalaNama}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-slate-500">NIP. 19780515 200312 1 002</p>
+                  <p className="text-[10px] sm:text-xs text-slate-600 font-mono">NIP. {kepalaNip}</p>
                 </div>
               </div>
 
