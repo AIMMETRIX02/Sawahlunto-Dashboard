@@ -203,6 +203,9 @@ export function mergeLandingConfig(remote: Partial<LandingConfig> | null | undef
     download: {
       ...DEFAULT_LANDING_CONFIG.download,
       ...(remote.download || {}),
+      fileMeta: Array.isArray(remote.download?.fileMeta) && remote.download.fileMeta.length > 0
+        ? remote.download.fileMeta.map((m: string) => m.replace('14.5 MB', '39 MB'))
+        : DEFAULT_LANDING_CONFIG.download.fileMeta,
       fileUrl: (remote.download?.fileUrl && remote.download.fileUrl.trim().length > 0)
         ? remote.download.fileUrl.trim()
         : DEFAULT_LANDING_CONFIG.download.fileUrl

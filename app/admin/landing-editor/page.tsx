@@ -886,6 +886,30 @@ export default function LandingEditorPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Informasi Badge Metadata (Pemisah Koma)
+                </label>
+                <input
+                  type="text"
+                  value={(config.download.fileMeta || []).join(', ')}
+                  placeholder="Format: PDF, Ukuran: 39 MB, Edisi 2024 • Rev 3.2"
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      download: {
+                        ...config.download,
+                        fileMeta: e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                      }
+                    })
+                  }
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm font-mono"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Tag pill di bawah judul. Contoh: <span className="text-yellow-400">Format: PDF, Ukuran: 39 MB, Edisi 2024 • Rev 3.2</span>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                   URL Tautan Berkas Unduhan (Cloud Storage / R2)
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2.5">
