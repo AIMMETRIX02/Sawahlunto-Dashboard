@@ -8,6 +8,7 @@ import Link from 'next/link'
 import {
   LandingConfig,
   DEFAULT_LANDING_CONFIG,
+  mergeLandingConfig,
   ScreenshotItem,
   SopStepItem,
   CustomBlockItem,
@@ -34,7 +35,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Eye,
-  Check
+  Check,
+  Search
 } from 'lucide-react'
 
 export default function LandingEditorPage() {
@@ -49,6 +51,10 @@ export default function LandingEditorPage() {
   // WebP conversion state tracking per field
   const [convertingKey, setConvertingKey] = useState<string | null>(null)
   const [conversionStats, setConversionStats] = useState<{ [key: string]: ConvertedWebPResult }>({})
+
+  // R2 URL Test State
+  const [testingUrl, setTestingUrl] = useState(false)
+  const [urlTestResult, setUrlTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -81,7 +87,7 @@ export default function LandingEditorPage() {
         if (local) {
           try {
             const parsed = JSON.parse(local)
-            setConfig({ ...DEFAULT_LANDING_CONFIG, ...parsed })
+            setConfig(mergeLandingConfig(parsed))
           } catch (e) {}
         }
 
@@ -97,8 +103,9 @@ export default function LandingEditorPage() {
             ? JSON.parse(settings.landing_config)
             : settings.landing_config
 
-          setConfig({ ...DEFAULT_LANDING_CONFIG, ...remoteConfig })
-          localStorage.setItem('bdtbt_landing_config', JSON.stringify(remoteConfig))
+          const merged = mergeLandingConfig(remoteConfig)
+          setConfig(merged)
+          localStorage.setItem('bdtbt_landing_config', JSON.stringify(merged))
         }
       } catch (err: any) {
         console.error('Error loading landing editor config:', err)
@@ -113,6 +120,46 @@ export default function LandingEditorPage() {
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  // Handle testing Cloudflare R2 URL
+  const handleTestR2Url = async () => {
+    const url = config.download.fileUrl?.trim()
+    const fileName = config.download.fileName?.trim() || 'Manual Book Non Electrical UG Blast BDTBT.pdf'
+    if (!url) {
+      setUrlTestResult({ ok: false, message: 'URL belum diisi! Silakan tempelkan tautan dari Cloudflare R2.' })
+      return
+    }
+
+    setTestingUrl(true)
+    setUrlTestResult(null)
+
+    try {
+      const endpoint = `/api/download?filename=${encodeURIComponent(fileName)}&url=${encodeURIComponent(url)}`
+      const res = await fetch(endpoint, { method: 'HEAD' })
+
+      if (res.ok) {
+        const cl = res.headers.get('content-length')
+        const sizeStr = cl ? ` (Ukuran: ${(parseInt(cl) / (1024 * 1024)).toFixed(1)} MB)` : ''
+        setUrlTestResult({
+          ok: true,
+          message: `✅ Berkas Ditemukan & Valid! Berkas di Cloudflare R2 siap diunduh oleh publik${sizeStr}.`
+        })
+      } else {
+        const errJson = await fetch(endpoint).then(r => r.json()).catch(() => null)
+        setUrlTestResult({
+          ok: false,
+          message: `❌ ${errJson?.error || `Gagal mengakses berkas (HTTP ${res.status})`}`
+        })
+      }
+    } catch (err: any) {
+      setUrlTestResult({
+        ok: false,
+        message: `❌ Terjadi kesalahan jaringan saat menguji URL: ${err.message}`
+      })
+    } finally {
+      setTestingUrl(false)
+    }
   }
 
   // Handle image upload and auto-convert to WebP
@@ -841,13 +888,79 @@ export default function LandingEditorPage() {
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                   URL Tautan Berkas Unduhan (Cloud Storage / R2)
                 </label>
-                <input
-                  type="text"
-                  value={config.download.fileUrl || ''}
-                  placeholder="https://pub-....r2.dev/..."
-                  onChange={(e) => setConfig({ ...config, download: { ...config.download, fileUrl: e.target.value } })}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm font-mono"
-                />
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    type="text"
+                    value={config.download.fileUrl || ''}
+                    placeholder="https://pub-....r2.dev/Nama_File.pdf atau domain kustom"
+                    onChange={(e) => {
+                      setConfig({ ...config, download: { ...config.download, fileUrl: e.target.value } })
+                      setUrlTestResult(null)
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm font-mono focus:border-yellow-400 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestR2Url}
+                    disabled={testingUrl}
+                    className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-black text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-2 flex-shrink-0 cursor-pointer shadow-md"
+                  >
+                    {testingUrl ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-black" />
+                        <span>Menguji...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 text-black" />
+                        <span>Uji Tautan R2</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Status Uji Tautan */}
+                {urlTestResult && (
+                  <div
+                    className={`mt-3 p-3.5 rounded-xl border text-xs leading-relaxed flex items-start space-x-2.5 ${
+                      urlTestResult.ok
+                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                        : 'bg-red-950/40 border-red-500/40 text-red-300'
+                    }`}
+                  >
+                    {urlTestResult.ok ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="font-semibold">{urlTestResult.message}</p>
+                      {!urlTestResult.ok && (
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Tips: Masuk ke Cloudflare Dashboard &gt; R2 &gt; pilih Bucket Anda &gt; Settings &gt; aktifkan &quot;R2.dev subdomain&quot; atau &quot;Custom Domain&quot;.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Panduan Cloudflare R2 */}
+                <div className="mt-3 p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs space-y-1.5 text-gray-400">
+                  <p className="text-yellow-400 font-bold flex items-center">
+                    <Info className="w-3.5 h-3.5 mr-1.5" /> Panduan Cloudflare R2 untuk Pengunduhan Publik:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] pl-1 text-gray-300">
+                    <li>
+                      <strong className="text-white">Aktifkan Public Access:</strong> Buka Cloudflare Dashboard &rarr; <em>R2 Object Storage</em> &rarr; Pilih Bucket &rarr; Tab <em>Settings</em> &rarr; Bagian <em>Public Access</em> &rarr; Klik <strong>Allow Access</strong> pada <strong>R2.dev subdomain</strong> (atau hubungkan Custom Domain).
+                    </li>
+                    <li>
+                      <strong className="text-white">Format Tautan Benar:</strong> Gunakan tautan publik <code className="text-yellow-300 bg-slate-900 px-1 py-0.5 rounded font-mono">https://pub-xxxx.r2.dev/Nama_File.pdf</code>.
+                    </li>
+                    <li>
+                      <strong className="text-red-400">PENTING:</strong> Jangan gunakan link S3 internal (<code className="text-red-300 bg-slate-900 px-1 py-0.5 rounded font-mono">https://...r2.cloudflarestorage.com/...</code>) karena memerlukan kunci API/autentikasi AWS dan akan ditolak bila diunduh publik.
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

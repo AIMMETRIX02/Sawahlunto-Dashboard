@@ -8,6 +8,7 @@ import Link from 'next/link'
 import {
   LandingConfig,
   DEFAULT_LANDING_CONFIG,
+  mergeLandingConfig,
   ScreenshotItem,
   SopStepItem,
   ArticleItem,
@@ -17,6 +18,7 @@ import {
   HardHat,
   GraduationCap,
   Download,
+  Loader2,
   ArrowRight,
   ShieldCheck,
   Cpu,
@@ -70,6 +72,7 @@ export default function LandingPage() {
   const [activeImage, setActiveImage] = useState<ScreenshotItem | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<ArticleItem | null>(null)
   const [downloadToast, setDownloadToast] = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -101,7 +104,7 @@ export default function LandingPage() {
         if (local) {
           try {
             const parsed = JSON.parse(local)
-            setConfig({ ...DEFAULT_LANDING_CONFIG, ...parsed })
+            setConfig(mergeLandingConfig(parsed))
           } catch (e) {}
         }
 
@@ -117,8 +120,9 @@ export default function LandingPage() {
             ? JSON.parse(settings.landing_config)
             : settings.landing_config
 
-          setConfig({ ...DEFAULT_LANDING_CONFIG, ...remote })
-          localStorage.setItem('bdtbt_landing_config', JSON.stringify(remote))
+          const merged = mergeLandingConfig(remote)
+          setConfig(merged)
+          localStorage.setItem('bdtbt_landing_config', JSON.stringify(merged))
         }
       } catch (err) {
         console.warn('Gagal memuat konfigurasi landing page:', err)
@@ -139,24 +143,52 @@ export default function LandingPage() {
     }
   }
 
-  const triggerDownload = (url: string, fileName: string, label: string) => {
-    setDownloadToast(`Memulai unduhan berkas: ${label}...`)
-    const targetUrl = url || config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'
-    const targetName = fileName || config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'
-    
-    const downloadEndpoint = `/api/download?filename=${encodeURIComponent(targetName)}&url=${encodeURIComponent(targetUrl)}`
-    
-    const link = document.createElement('a')
-    link.href = downloadEndpoint
-    link.setAttribute('download', targetName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    setTimeout(() => {
-      setDownloadToast(`Unduhan ${label} berhasil disiapkan!`)
-      setTimeout(() => setDownloadToast(null), 4000)
-    }, 500)
+  const handleDownloadSop = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    if (isDownloading) return
+
+    const targetUrl = config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf'
+    const targetName = config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'
+
+    setIsDownloading(true)
+    setDownloadToast(`Memeriksa ketersediaan berkas di Cloudflare R2...`)
+
+    try {
+      const downloadEndpoint = `/api/download?filename=${encodeURIComponent(targetName)}&url=${encodeURIComponent(targetUrl)}`
+
+      // 1. Verifikasi terlebih dahulu dengan HEAD request ke /api/download
+      const testRes = await fetch(downloadEndpoint, { method: 'HEAD' })
+
+      if (!testRes.ok) {
+        // Ambil rincian error dari JSON
+        const errJson = await fetch(downloadEndpoint).then(r => r.json()).catch(() => null)
+        const errorMsg = errJson?.error || `Gagal mengunduh berkas (HTTP ${testRes.status}).`
+        setDownloadToast(`❌ ${errorMsg}`)
+        alert(`Gagal Mengunduh Berkas:\n\n${errorMsg}\n\nPastikan URL Cloudflare R2 sudah benar dan fitur Public Access (r2.dev atau Custom Domain) sudah diaktifkan di Cloudflare.`)
+        return
+      }
+
+      // 2. Berkas valid! Picu proses download langsung oleh browser
+      setDownloadToast(`Mengunduh berkas: ${targetName}...`)
+      
+      const link = document.createElement('a')
+      link.href = downloadEndpoint
+      link.setAttribute('download', targetName)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      setTimeout(() => {
+        setDownloadToast(`Unduhan ${targetName} berhasil diproses!`)
+        setTimeout(() => setDownloadToast(null), 4000)
+      }, 1000)
+    } catch (err: any) {
+      console.error('Download verification error:', err)
+      setDownloadToast(`❌ Gagal terhubung ke server unduhan`)
+      alert(`Terjadi kesalahan koneksi saat mengunduh berkas: ${err.message}`)
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -666,18 +698,23 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <a
-              href={`/api/download?filename=${encodeURIComponent(config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf')}&url=${encodeURIComponent(config.download.fileUrl || 'https://pub-8b89ed0687f548dab4ebe7c8a311ed49.r2.dev/Manual%20Book%20Non%20Electrical%20UG%20Blast%20BDTBT.pdf')}`}
-              download={config.download.fileName || 'Manual Book Non Electrical UG Blast BDTBT.pdf'}
-              onClick={() => {
-                setDownloadToast(`Memulai unduhan berkas: ${config.download.buttonText}...`)
-                setTimeout(() => setDownloadToast(null), 4000)
-              }}
-              className="mt-8 w-full sm:w-auto px-10 py-4 bg-[#FFF000] hover:bg-yellow-400 text-black text-sm sm:text-base font-black rounded-2xl transition-all flex items-center justify-center space-x-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] border border-yellow-300 cursor-pointer"
+            <button
+              onClick={handleDownloadSop}
+              disabled={isDownloading}
+              className="mt-8 w-full sm:w-auto px-10 py-4 bg-[#FFF000] hover:bg-yellow-400 disabled:opacity-75 disabled:cursor-not-allowed text-black text-sm sm:text-base font-black rounded-2xl transition-all flex items-center justify-center space-x-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] border border-yellow-300 cursor-pointer"
             >
-              <Download className="w-5 h-5 text-black" />
-              <span>{config.download.buttonText}</span>
-            </a>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-5 h-5 text-black animate-spin" />
+                  <span>Memeriksa & Mengunduh Berkas...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5 text-black" />
+                  <span>{config.download.buttonText}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </section>

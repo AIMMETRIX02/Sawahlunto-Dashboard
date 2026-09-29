@@ -192,3 +192,25 @@ export const DEFAULT_LANDING_CONFIG: LandingConfig = {
     engine: 'Unreal Engine 5 • OpenXR Standard'
   }
 }
+
+export function mergeLandingConfig(remote: Partial<LandingConfig> | null | undefined): LandingConfig {
+  if (!remote || typeof remote !== 'object') return DEFAULT_LANDING_CONFIG
+  return {
+    ...DEFAULT_LANDING_CONFIG,
+    ...remote,
+    hero: { ...DEFAULT_LANDING_CONFIG.hero, ...(remote.hero || {}) },
+    hardware: { ...DEFAULT_LANDING_CONFIG.hardware, ...(remote.hardware || {}) },
+    download: {
+      ...DEFAULT_LANDING_CONFIG.download,
+      ...(remote.download || {}),
+      fileUrl: (remote.download?.fileUrl && remote.download.fileUrl.trim().length > 0)
+        ? remote.download.fileUrl.trim()
+        : DEFAULT_LANDING_CONFIG.download.fileUrl
+    },
+    footer: { ...DEFAULT_LANDING_CONFIG.footer, ...(remote.footer || {}) },
+    screenshots: Array.isArray(remote.screenshots) && remote.screenshots.length > 0 ? remote.screenshots : DEFAULT_LANDING_CONFIG.screenshots,
+    sopSteps: Array.isArray(remote.sopSteps) && remote.sopSteps.length > 0 ? remote.sopSteps : DEFAULT_LANDING_CONFIG.sopSteps,
+    customBlocks: Array.isArray(remote.customBlocks) ? remote.customBlocks : DEFAULT_LANDING_CONFIG.customBlocks,
+    articles: Array.isArray(remote.articles) && remote.articles.length > 0 ? remote.articles : DEFAULT_LANDING_CONFIG.articles,
+  }
+}
