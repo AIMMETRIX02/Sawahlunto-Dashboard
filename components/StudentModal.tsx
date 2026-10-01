@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
-import { StudentData } from './StudentTable'
+import { X, Loader2, CheckCircle2, ShieldCheck, MessageSquare } from 'lucide-react'
+import { StudentData, EVALUATION_FIELDS } from '@/lib/examHelpers'
 
 interface StudentModalProps {
   isOpen: boolean
@@ -10,20 +12,6 @@ interface StudentModalProps {
   initialData?: StudentData | null
 }
 
-const EVALUATION_FIELDS = [
-  { key: 'safety', label: 'Safety Equipment', icon: '🦺' },
-  { key: 'scaling', label: 'Scaling', icon: '⛏️' },
-  { key: 'primer', label: 'Primer', icon: '💣' },
-  { key: 'tie_in', label: 'Tie In', icon: '🔗' },
-  { key: 'cord_cable', label: 'Cord/Cable', icon: '🔌' },
-  { key: 'charging', label: 'Charging', icon: '⚡' },
-  { key: 'blasting_cap', label: 'Blasting Cap', icon: '🧨' },
-  { key: 'cap_line', label: 'Cap Line', icon: '🧵' },
-  { key: 'ignite_blastbox', label: 'Ignite Blastbox', icon: '📦' },
-  { key: 'blasting', label: 'Blasting', icon: '💥' },
-  { key: 'motor_fan', label: 'Motor Fan', icon: '🌀' },
-] as const
-
 export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentModalProps) {
   const [formData, setFormData] = useState<Partial<StudentData>>({
     nama: '',
@@ -31,7 +19,8 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
     instansi: 'Balai Diklat Tambang Bawah Tanah',
     modul: 'Tambang Bawah Tanah',
     mode: 'Simulasi VR',
-    delay_image: '',
+    status_approval: 'Sedang Di Tinjau Instruktur',
+    catatan_instruktur: '',
     tanggal: new Date().toISOString().split('T')[0],
     waktu: '08:00',
     benar: 0,
@@ -62,7 +51,8 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
         id_peserta: initialData.id_peserta || '',
         instansi: initialData.instansi || 'Balai Diklat Tambang Bawah Tanah',
         mode: initialData.mode || 'Simulasi VR',
-        delay_image: initialData.delay_image || '',
+        status_approval: initialData.status_approval || 'Sedang Di Tinjau Instruktur',
+        catatan_instruktur: initialData.catatan_instruktur || '',
         safety: initialData.safety ?? false,
         scaling: initialData.scaling ?? false,
         primer: initialData.primer ?? false,
@@ -82,7 +72,8 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
         instansi: 'Balai Diklat Tambang Bawah Tanah',
         modul: 'Tambang Bawah Tanah',
         mode: 'Simulasi VR',
-        delay_image: '',
+        status_approval: 'Sedang Di Tinjau Instruktur',
+        catatan_instruktur: '',
         tanggal: new Date().toISOString().split('T')[0],
         waktu: '08:00',
         benar: 0,
@@ -132,7 +123,7 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
             </h2>
             <p className="text-xs text-[#FFF000]">Balai Diklat Tambang Bawah Tanah – ESDM</p>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -165,7 +156,6 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
                   onChange={(e) => setFormData({ ...formData, id_peserta: e.target.value.toUpperCase() })}
                   className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-[#EAB308] font-bold rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all uppercase text-sm"
                   placeholder="REG-2026-001"
-                  maxLength={15}
                 />
               </div>
 
@@ -229,6 +219,42 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
             </div>
           </div>
 
+          {/* Status Kelulusan & Catatan Instruktur */}
+          <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+            <h3 className="text-xs font-bold text-[#CA8A04] dark:text-[#FACC15] uppercase tracking-wider mb-3 flex items-center">
+              ⚖️ Keputusan Evaluasi & Catatan Instruktur
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Status Evaluasi
+                </label>
+                <select
+                  value={formData.status_approval || 'Sedang Di Tinjau Instruktur'}
+                  onChange={(e) => setFormData({ ...formData, status_approval: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all text-xs font-semibold"
+                >
+                  <option value="Sedang Di Tinjau Instruktur">Sedang Di Tinjau Instruktur</option>
+                  <option value="Disetujui">Disetujui (Kompeten / Lulus)</option>
+                  <option value="Tidak Disetujui">Tidak Disetujui (Belum Kompeten)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Catatan / Alasan Instruktur
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.catatan_instruktur || ''}
+                  onChange={(e) => setFormData({ ...formData, catatan_instruktur: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-[#1D2327] focus:border-[#EAB308] outline-none transition-all text-xs font-medium"
+                  placeholder="Catatan hasil simulasi atau alasan kelulusan/perbaikan..."
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold text-[#CA8A04] dark:text-[#FACC15] uppercase tracking-wider flex items-center">
@@ -248,7 +274,7 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
                     key={key}
                     type="button"
                     onClick={() => toggleEvalField(key as keyof StudentData)}
-                    className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all text-left ${
+                    className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer ${
                       isChecked
                         ? 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-800 dark:text-green-300 shadow-sm ring-1 ring-green-500/50'
                         : 'bg-gray-50/80 dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-700'
@@ -274,14 +300,14 @@ export function StudentModal({ isOpen, onClose, onSave, initialData }: StudentMo
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 font-medium transition-colors text-xs uppercase tracking-wider"
+              className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 font-medium transition-colors text-xs uppercase tracking-wider cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 text-[#FFF000] bg-[#1D2327] border border-yellow-500/30 rounded-xl hover:bg-black font-bold transition-colors disabled:opacity-70 flex items-center shadow-lg uppercase tracking-wider text-xs"
+              className="px-6 py-2.5 text-[#FFF000] bg-[#1D2327] border border-yellow-500/30 rounded-xl hover:bg-black font-bold transition-colors disabled:opacity-70 flex items-center shadow-lg uppercase tracking-wider text-xs cursor-pointer"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-[#FFF000]" /> : null}
               {initialData ? 'Simpan Perubahan' : 'Tambah Data Evaluasi'}

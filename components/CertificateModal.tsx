@@ -1,7 +1,7 @@
 'use client'
 
 import { X, Printer } from 'lucide-react'
-import { StudentData } from './StudentTable'
+import { StudentData } from '@/lib/examHelpers'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
@@ -205,7 +205,7 @@ export function CertificateModal({ isOpen, onClose, student }: CertificateModalP
   const complianceRate = Math.round((completedSteps / 11) * 100) || 0
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm print:bg-transparent print:p-0 print:items-start print:justify-start">
+    <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md print:bg-transparent print:p-0 print:items-start print:justify-start">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[95vh] overflow-hidden">
         
         {/* Modal Header */}

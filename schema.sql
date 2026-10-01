@@ -10,8 +10,9 @@
 -- 1. Tabel hasil_ujian
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS instansi TEXT DEFAULT 'BDTBT ESDM';
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'Simulasi';
-ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS delay_image TEXT;
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS delay_data JSONB;
+ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS status_approval TEXT DEFAULT 'Sedang Di Tinjau Instruktur';
+ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS catatan_instruktur TEXT;
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS safety BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS scaling BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.hasil_ujian ADD COLUMN IF NOT EXISTS primer BOOLEAN DEFAULT FALSE;

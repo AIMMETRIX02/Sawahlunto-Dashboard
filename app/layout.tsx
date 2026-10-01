@@ -8,6 +8,18 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Balai Diklat Tambang Bawah Tanah - Kementerian ESDM',
   description: 'Portal Official Balai Diklat Tambang Bawah Tanah Kementerian Energi dan Sumber Daya Mineral (ESDM) Sawahlunto',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '32x32' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/icon.svg',
+  },
 }
 
 export default function RootLayout({

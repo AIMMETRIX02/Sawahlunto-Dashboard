@@ -27,6 +27,7 @@ import {
   X, 
   Loader2, 
   ChevronRight, 
+  ChevronLeft,
   Copy, 
   Check, 
   Eye, 
@@ -249,6 +250,20 @@ export default function SuperadminPage() {
       return dateB - dateA
     })
   }, [profiles, searchQuery, selectedRoleFilter, selectedInstansiFilter, sortBy])
+
+  // Pagination State (15 Akun Per Halaman)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 15
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedRoleFilter, selectedInstansiFilter, sortBy])
+
+  const totalPages = Math.ceil(filteredProfiles.length / ITEMS_PER_PAGE) || 1
+  const paginatedProfiles = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredProfiles.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredProfiles, currentPage])
 
   // 5. Metrics Calculation
   const metrics = useMemo(() => {
@@ -796,15 +811,17 @@ export default function SuperadminPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-[#1D2327] text-white text-xs font-semibold uppercase tracking-wider">
                 <tr>
-                  <th className="py-4 px-6">Pengguna</th>
-                  <th className="py-4 px-6">ID Peserta / NIP</th>
-                  <th className="py-4 px-6">Instansi / Perusahaan</th>
-                  <th className="py-4 px-6">Hak Akses (Role)</th>
-                  <th className="py-4 px-6">Terdaftar</th>
-                  <th className="py-4 px-6 text-right">Kelola Aksi</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Pengguna</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap">ID Peserta / NIP</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap">Instansi / Perusahaan</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap">Hak Akses (Role)</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap">Terdaftar</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap sticky right-0 bg-[#1D2327] z-20 shadow-[-6px_0_12px_rgba(0,0,0,0.3)] border-l border-white/10 w-28">
+                    Kelola Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
@@ -817,7 +834,7 @@ export default function SuperadminPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredProfiles.map(p => {
+                  paginatedProfiles.map(p => {
                     const roleKey = p.role || 'peserta'
                     const roleCfg = ROLES_INFO[roleKey] || ROLES_INFO.peserta
                     const RoleIcon = roleCfg.icon
@@ -826,46 +843,46 @@ export default function SuperadminPage() {
                     return (
                       <tr 
                         key={p.id}
-                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/50 transition-colors group ${
                           isSelf ? 'bg-yellow-50/50 dark:bg-yellow-950/10' : ''
                         }`}
                       >
                         {/* Pengguna (Avatar, Nama, Email) */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3.5">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm ${
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0 ${
                               roleKey === 'superadmin' ? 'bg-purple-600 text-white' :
                               roleKey === 'admin' ? 'bg-blue-600 text-white' :
                               'bg-amber-500 text-black font-extrabold'
                             }`}>
                               {(p.full_name || p.nama || p.email || 'U').slice(0, 2).toUpperCase()}
                             </div>
-                            <div>
-                              <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                            <div className="min-w-0">
+                              <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate max-w-[180px]">
                                 {p.full_name || p.nama || 'Tanpa Nama'}
                                 {isSelf && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-600 dark:text-yellow-300 font-bold border border-yellow-400/40">
-                                    AKUN ANDA
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-yellow-400/20 text-yellow-600 dark:text-yellow-300 font-bold border border-yellow-400/40 flex-shrink-0">
+                                    ANDA
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                                <Mail className="w-3 h-3" />
-                                {p.email || 'Email belum diatur'}
+                              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate max-w-[200px]" title={p.email || ''}>
+                                <Mail className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">{p.email || 'Email belum diatur'}</span>
                               </div>
                             </div>
                           </div>
                         </td>
 
                         {/* ID Peserta / NIP */}
-                        <td className="py-4 px-6 font-mono font-bold text-xs text-gray-700 dark:text-gray-300">
+                        <td className="py-3.5 px-3 whitespace-nowrap font-mono font-bold text-xs text-gray-700 dark:text-gray-300">
                           {p.id_peserta || p.stambuk ? (
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-2xs">
                               <span>{p.id_peserta || p.stambuk}</span>
                               <button 
                                 onClick={() => handleCopyId(p.id_peserta || p.stambuk || '')}
                                 title="Salin ID"
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
                               >
                                 {copiedId === (p.id_peserta || p.stambuk) ? (
                                   <Check className="w-3.5 h-3.5 text-green-500" />
@@ -875,79 +892,82 @@ export default function SuperadminPage() {
                               </button>
                             </div>
                           ) : (
-                            <span className="text-gray-400 italic">Belum diisi</span>
+                            <span className="text-gray-400 italic text-xs">Belum diisi</span>
                           )}
                         </td>
 
                         {/* Instansi */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-1.5 text-gray-700 dark:text-gray-300 font-medium">
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          <div className="flex items-center space-x-1.5 text-gray-700 dark:text-gray-300 font-medium text-xs">
                             <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                            <span className="truncate max-w-[200px]" title={p.instansi || 'BDTBT ESDM'}>
+                            <span className="truncate max-w-[150px]" title={p.instansi || 'BDTBT ESDM'}>
                               {p.instansi || 'Balai Diklat Tambang Bawah Tanah'}
                             </span>
                           </div>
                         </td>
 
                         {/* Role Selector & Badge */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${roleCfg.badgeBg}`}>
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          <div className="flex items-center space-x-1.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${roleCfg.badgeBg} whitespace-nowrap shadow-2xs`}>
                               <RoleIcon className="w-3.5 h-3.5" />
                               {roleCfg.label}
                             </span>
 
                             {/* Inline Quick Role Selector */}
-                            <select
-                              value={p.role === 'mahasiswa' ? 'peserta' : p.role}
-                              onChange={e => handleQuickRoleChange(p, e.target.value)}
-                              disabled={isSelf}
-                              title={isSelf ? 'Anda tidak dapat menurunkan role akun Anda sendiri' : 'Ubah role pengguna secara cepat'}
-                              className="text-xs bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <option value="superadmin">Jadikan Superadmin</option>
-                              <option value="admin">Jadikan Admin</option>
-                              <option value="peserta">Jadikan Peserta</option>
-                            </select>
+                            {!isSelf && (
+                              <select
+                                value={p.role === 'mahasiswa' ? 'peserta' : p.role}
+                                onChange={e => handleQuickRoleChange(p, e.target.value)}
+                                title="Ubah role pengguna"
+                                className="text-[11px] bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:border-yellow-500 transition-colors shadow-2xs"
+                              >
+                                <option value="superadmin">Superadmin</option>
+                                <option value="admin">Admin</option>
+                                <option value="peserta">Peserta</option>
+                              </select>
+                            )}
                           </div>
                         </td>
 
                         {/* Tanggal Terdaftar */}
-                        <td className="py-4 px-6 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        <td className="py-3.5 px-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 font-medium">
                           {p.created_at ? (
                             <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-gray-400" />
-                              {new Date(p.created_at).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                              })}
+                              <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              <span>
+                                {new Date(p.created_at).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })}
+                              </span>
                             </div>
                           ) : (
                             '-'
                           )}
                         </td>
 
-                        {/* Kelola Aksi */}
-                        <td className="py-4 px-6 text-right">
-                          <div className="flex items-center justify-end space-x-2">
+                        {/* Kelola Aksi (Sticky Right - Pinned & ALWAYS Visible Without Scrolling!) */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap sticky right-0 bg-white dark:bg-slate-900 group-hover:bg-gray-50 dark:group-hover:bg-slate-800 transition-colors z-10 shadow-[-6px_0_12px_rgba(0,0,0,0.06)] border-l border-gray-100 dark:border-slate-800 w-28">
+                          <div className="flex items-center justify-center space-x-1.5">
                             
                             {/* Edit Button */}
                             <button
                               onClick={() => openEditModal(p)}
                               title="Edit Profil & Role"
-                              className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition-all shadow-2xs cursor-pointer"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Reset Password Button */}
                             <button
                               onClick={() => openResetPwdModal(p)}
                               title="Kirim Tautan Reset Kata Sandi"
-                              className="p-1.5 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 transition-all shadow-2xs cursor-pointer"
                             >
-                              <KeyRound className="w-4 h-4" />
+                              <KeyRound className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Delete Button */}
@@ -955,9 +975,9 @@ export default function SuperadminPage() {
                               onClick={() => openDeleteModal(p)}
                               disabled={isSelf}
                               title={isSelf ? 'Anda tidak dapat menghapus akun sendiri' : 'Hapus Akun Pengguna'}
-                              className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-800 transition-all shadow-2xs cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
 
                           </div>
@@ -969,6 +989,70 @@ export default function SuperadminPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredProfiles.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50 dark:bg-slate-900/50">
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                Menampilkan <span className="font-bold text-gray-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-bold text-gray-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filteredProfiles.length)}</span> dari <span className="font-bold text-gray-900 dark:text-white">{filteredProfiles.length}</span> akun pengguna
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center space-x-1.5 sm:space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center shadow-2xs"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Sebelumnya
+                  </button>
+
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                      if (
+                        pageNum === 1 || 
+                        pageNum === totalPages || 
+                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-9 h-9 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                              currentPage === pageNum
+                                ? 'bg-[#1D2327] text-[#FFF000] border border-yellow-500/40 shadow-sm dark:bg-yellow-400 dark:text-black'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      } else if (
+                        pageNum === currentPage - 2 || 
+                        pageNum === currentPage + 2
+                      ) {
+                        return <span key={pageNum} className="text-gray-400 px-1 text-xs">...</span>
+                      }
+                      return null
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center shadow-2xs"
+                  >
+                    Selanjutnya
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </main>

@@ -1,27 +1,41 @@
-import { Users, CheckCircle2, TrendingUp, Target } from 'lucide-react'
+import React from 'react'
+import { Users, CheckCircle2, Clock, Target } from 'lucide-react'
 
 interface SummaryCardsProps {
   totalStudents: number
   passedStudents: number
   failedStudents: number
   passRate: number
+  pendingStudents?: number
 }
 
-export function SummaryCards({ totalStudents, passedStudents, failedStudents, passRate }: SummaryCardsProps) {
+export function SummaryCards({
+  totalStudents,
+  passedStudents,
+  failedStudents,
+  pendingStudents = 0,
+}: SummaryCardsProps) {
   const cards = [
     {
-      title: 'Total Peserta Diklat',
+      title: 'Total Evaluasi Ujian',
       value: totalStudents,
       icon: Users,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-100 dark:bg-amber-900/30'
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/30'
     },
     {
-      title: 'Peserta Kompeten',
+      title: 'Kompeten (Disetujui)',
       value: passedStudents,
       icon: CheckCircle2,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900/30'
+    },
+    {
+      title: 'Sedang Ditinjau',
+      value: pendingStudents,
+      icon: Clock,
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-100 dark:bg-amber-900/30'
     },
     {
       title: 'Belum Kompeten',
@@ -29,13 +43,6 @@ export function SummaryCards({ totalStudents, passedStudents, failedStudents, pa
       icon: Target,
       color: 'text-rose-600 dark:text-rose-400',
       bgColor: 'bg-rose-100 dark:bg-rose-900/30'
-    },
-    {
-      title: 'Tingkat Kelulusan',
-      value: `${passRate.toFixed(0)}%`,
-      icon: TrendingUp,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30'
     }
   ]
 
@@ -47,8 +54,8 @@ export function SummaryCards({ totalStudents, passedStudents, failedStudents, pa
             <card.icon className={`h-6 w-6 ${card.color}`} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{card.title}</p>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</h3>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">{card.title}</p>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white">{card.value}</h3>
           </div>
         </div>
       ))}
