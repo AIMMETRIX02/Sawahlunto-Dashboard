@@ -314,7 +314,8 @@ export default function LandingPage() {
       {/* =========================================================================
           HERO SECTION
           ========================================================================= */}
-      <section className="relative overflow-hidden pt-10 pb-20 sm:pt-16 sm:pb-28 border-b border-yellow-500/20 bg-gradient-to-b from-[#14181B] via-slate-950 to-slate-950">
+      <main id="main-content" role="main">
+        <section className="relative overflow-hidden pt-10 pb-20 sm:pt-16 sm:pb-28 border-b border-yellow-500/20 bg-gradient-to-b from-[#14181B] via-slate-950 to-slate-950">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-yellow-500/10 blur-[130px] rounded-full pointer-events-none"></div>
         <div className="absolute top-20 right-10 w-96 h-96 bg-purple-600/10 blur-[140px] rounded-full pointer-events-none"></div>
 
@@ -718,6 +719,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* =========================================================================
           FOOTER (Khas BDTBT ESDM)
