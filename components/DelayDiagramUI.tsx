@@ -467,13 +467,24 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
     return (
       <g
         key={`hole-node-${hole}`}
-        className={isEditMode ? 'cursor-pointer transition-transform hover:scale-110' : ''}
+        className={isEditMode ? 'cursor-pointer' : ''}
         onClick={() => {
           if (isEditMode) {
             handleToggleHoleSelection(hole)
           }
         }}
       >
+        {/* Invisible enlarged hit target for easy clicking */}
+        {isEditMode && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={Math.max(r + 10, 16)}
+            fill="transparent"
+            className="cursor-pointer"
+          />
+        )}
+
         {/* Selection indicator ring when in Edit Mode */}
         {isSelected && (
           <circle
@@ -482,10 +493,8 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
             r={r + 5}
             fill="none"
             stroke="#00E5FF"
-            strokeWidth="3"
+            strokeWidth="2.5"
             strokeDasharray="4 2"
-            className="animate-spin"
-            style={{ transformOrigin: `${cx}px ${cy}px` }}
           />
         )}
 
