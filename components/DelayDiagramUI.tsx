@@ -592,19 +592,9 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
         <div className="mb-5 p-3.5 bg-slate-900/80 rounded-2xl border border-gray-800 flex flex-wrap items-center justify-between gap-4 text-xs">
           
           {/* Comparison Legend: Green for Match, Red for Mismatch */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-gray-400 font-semibold uppercase text-[10px] tracking-wider">Keterangan:</span>
             
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-white border border-gray-500"></span>
-              <span className="text-gray-200 font-medium">Nilai Atas: <strong className="text-white">Simulasi Peserta</strong></span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-600"></span>
-              <span className="text-yellow-300 font-medium">Nilai Bawah: <strong className="text-yellow-200">Standar Acuan Global (Std)</strong></span>
-            </div>
-
             <div className="flex items-center gap-1.5 bg-green-950/60 px-2.5 py-1 rounded-lg border border-green-600/40">
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50"></span>
               <span className="text-green-400 font-bold">Hijau: Sesuai Standar</span>
@@ -614,13 +604,19 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50"></span>
               <span className="text-red-400 font-bold">Merah: Tidak Sesuai Standar</span>
             </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-gray-300 pl-1 border-l border-gray-800">
+              <span className="text-gray-400 font-medium text-[11px]">Format Nilai:</span>
+              <span className="text-white font-semibold text-[11px] bg-slate-800 px-2 py-0.5 rounded border border-gray-700">Atas = Simulasi</span>
+              <span className="text-gray-300 font-semibold text-[11px] bg-slate-800 px-2 py-0.5 rounded border border-gray-700">Bawah = Standar (Std)</span>
+            </div>
           </div>
 
           {/* Quick Accuracy Score */}
           <div className="flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-xl border border-gray-800">
             <div className="text-right">
               <div className="text-[10px] text-gray-400 uppercase font-semibold">Tingkat Kesesuaian Standar</div>
-              <div className={`text-sm font-black font-mono ${stats.mismatches === 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+              <div className={`text-sm font-black font-mono ${stats.mismatches === 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {stats.matches} / {stats.total} Sesuai ({stats.accuracy}%)
               </div>
             </div>
@@ -1293,7 +1289,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                               </div>
                             ) : (
                               <div className="flex flex-col items-end gap-1">
-                                <div className="text-xs font-mono font-bold text-yellow-300">
+                                <div className={`text-xs font-mono font-bold ${isMatch ? 'text-green-300' : 'text-red-300'}`}>
                                   Std: {targetVal} ms
                                 </div>
                                 <span
