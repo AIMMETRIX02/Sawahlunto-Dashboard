@@ -4,15 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Edit3,
   CheckCircle2,
-  AlertTriangle,
+  AlertCircle,
   RotateCcw,
   Save,
   Globe,
   Sparkles,
   Info,
   X,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   Copy,
   Layers,
@@ -22,13 +20,11 @@ import {
   CheckSquare,
   Square,
   Search,
-  Plus,
-  Minus
+  CheckCheck
 } from 'lucide-react'
 import {
   DEFAULT_BENCHMARK_DELAYS,
   fetchStandardDelayData,
-  saveExamTargetDelays,
   saveGlobalStandardDelays
 } from '@/lib/examHelpers'
 
@@ -38,6 +34,7 @@ export interface DelayDiagramProps {
   studentId?: string
   studentName?: string
   isAdminView?: boolean
+  isGlobalMode?: boolean // True when opened from Dashboard to edit Global Standard
   onDataUpdated?: (updatedDelayData: any) => void
 }
 
@@ -118,6 +115,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
   studentId,
   studentName,
   isAdminView = false,
+  isGlobalMode = false,
   onDataUpdated,
 }: DelayDiagramProps) {
   // 1. Extract simulation delay values (66 numbers from VR simulator)
@@ -158,32 +156,10 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
     return new Array(66).fill(0)
   }, [delayData])
 
-  // 2. Extract initial target delays (from exam record, or default benchmark)
-  const initialTargetFromRecord: number[] | null = useMemo(() => {
-    let raw = delayData
-    if (typeof raw === 'string') {
-      try {
-        raw = JSON.parse(raw)
-      } catch (e) {
-        raw = null
-      }
-    }
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      if (Array.isArray(raw.target_delays) && raw.target_delays.length >= 66) {
-        return raw.target_delays.map((v: any) => Number(v) || 0)
-      }
-      if (Array.isArray(raw.target_delay_data) && raw.target_delay_data.length >= 66) {
-        return raw.target_delay_data.map((v: any) => Number(v) || 0)
-      }
-    }
-    return null
-  }, [delayData])
-
-  // Editable Target Delays State
-  const [targetDelays, setTargetDelays] = useState<number[]>(
-    initialTargetFromRecord || DEFAULT_BENCHMARK_DELAYS
-  )
-  const [isEditMode, setIsEditMode] = useState<boolean>(false)
+  // 2. Target Delays State: Always evaluates against the Global Standard
+  const [targetDelays, setTargetDelays] = useState<number[]>(DEFAULT_BENCHMARK_DELAYS)
+  
+  // In Global Mode, edit is ALWAYS active; in per-exam evaluation, edit is OFF (tidak ada edit per ujian)
   const [selectedHoles, setSelectedHoles] = useState<number[]>([])
   const [manualInputValue, setManualInputValue] = useState<string>('')
   const [viewMode, setViewMode] = useState<'visual' | 'table'>('visual')
@@ -204,13 +180,8 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null)
 
-  // Fetch standard global benchmark if no specific record override exists
+  // Load global standard delay benchmark from Supabase system_settings
   useEffect(() => {
-    if (initialTargetFromRecord) {
-      setTargetDelays(initialTargetFromRecord)
-      return
-    }
-
     let isMounted = true
     const loadGlobalStandard = async () => {
       try {
@@ -223,14 +194,12 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
       }
     }
 
-    if (isAdminView) {
-      loadGlobalStandard()
-    }
+    loadGlobalStandard()
 
     return () => {
       isMounted = false
     }
-  }, [initialTargetFromRecord, isAdminView])
+  }, [])
 
   // Helper to get hole value
   const getHole = useCallback(
@@ -243,6 +212,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
   // Helper to set single hole value
   const handleSetHoleValue = useCallback((holeNum: number, value: number) => {
+    if (!isGlobalMode) return
     setTargetDelays((prev) => {
       const next = [...prev]
       if (holeNum === 0) {
@@ -252,10 +222,11 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
       }
       return next
     })
-  }, [])
+  }, [isGlobalMode])
 
   // Helper to set multiple holes value
   const handleSetMultipleHolesValue = useCallback((holes: number[], value: number) => {
+    if (!isGlobalMode) return
     setTargetDelays((prev) => {
       const next = [...prev]
       holes.forEach((holeNum) => {
@@ -267,30 +238,31 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
       })
       return next
     })
-  }, [])
+  }, [isGlobalMode])
 
-  // Toggle single hole selection
+  // Toggle single hole selection (Global Editor Only)
   const handleToggleHoleSelection = useCallback((hole: number) => {
+    if (!isGlobalMode) return
     setSelectedHoles((prev) => {
       const isAlready = prev.includes(hole)
       const next = isAlready ? prev.filter((h) => h !== hole) : [...prev, hole]
-      // If exactly 1 hole is now selected, initialize manual input with its value
       if (!isAlready && next.length === 1) {
         setManualInputValue(String(getHole(targetDelays, hole)))
       }
       return next
     })
-  }, [getHole, targetDelays])
+  }, [isGlobalMode, getHole, targetDelays])
 
   // Select all 66 holes
   const handleSelectAllHoles = useCallback(() => {
+    if (!isGlobalMode) return
     const all = []
     for (let i = 0; i <= 65; i++) all.push(i)
     setSelectedHoles(all)
     if (!manualInputValue) {
       setManualInputValue('50')
     }
-  }, [manualInputValue])
+  }, [isGlobalMode, manualInputValue])
 
   // Deselect all
   const handleClearSelection = useCallback(() => {
@@ -299,6 +271,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
   // Toggle selection for a whole section
   const handleToggleSectionSelection = useCallback((sectionHoles: number[]) => {
+    if (!isGlobalMode) return
     setSelectedHoles((prev) => {
       const allSelected = sectionHoles.every((h) => prev.includes(h))
       if (allSelected) {
@@ -308,12 +281,12 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
         return Array.from(union)
       }
     })
-  }, [])
+  }, [isGlobalMode])
 
   // Apply manual input value to all selected holes
   const handleApplyManualToSelected = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (selectedHoles.length === 0) return
+    if (!isGlobalMode || selectedHoles.length === 0) return
     const num = parseInt(manualInputValue, 10)
     if (isNaN(num) || num < 0) return
     handleSetMultipleHolesValue(selectedHoles, num)
@@ -321,6 +294,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
   // Adjust manual input value by delta
   const handleAdjustManual = (delta: number) => {
+    if (!isGlobalMode) return
     const current = parseInt(manualInputValue, 10) || 0
     const nextVal = Math.max(0, current + delta)
     setManualInputValue(String(nextVal))
@@ -331,52 +305,20 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
   // Set section value from manual input
   const handleApplySectionManual = (sectionId: string, sectionHoles: number[]) => {
+    if (!isGlobalMode) return
     const valStr = sectionInputs[sectionId] ?? '50'
     const num = parseInt(valStr, 10)
     if (isNaN(num) || num < 0) return
     handleSetMultipleHolesValue(sectionHoles, num)
   }
 
-  // Copy participant simulation delays to target
-  const handleCopyFromSimulation = () => {
-    setTargetDelays([...simulatedFlat])
-  }
-
   // Reset to standard BDTBT default
   const handleResetToDefault = () => {
+    if (!isGlobalMode) return
     setTargetDelays([...DEFAULT_BENCHMARK_DELAYS])
   }
 
-  // Save for this exam
-  const handleSaveForThisExam = async () => {
-    if (!studentId) {
-      setSaveErrorMsg('ID ujian tidak valid untuk disimpan ke database.')
-      return
-    }
-
-    setIsSaving(true)
-    setSaveSuccessMsg(null)
-    setSaveErrorMsg(null)
-
-    try {
-      const res = await saveExamTargetDelays(studentId, delayData, targetDelays)
-      if (!res.success) {
-        throw new Error(res.error || 'Gagal menyimpan delay acuan.')
-      }
-
-      setSaveSuccessMsg('Berhasil menyimpan delay acuan untuk ujian peserta ini!')
-      if (onDataUpdated) {
-        onDataUpdated(res.data)
-      }
-      setTimeout(() => setSaveSuccessMsg(null), 4000)
-    } catch (err: any) {
-      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // Save as Global Benchmark
+  // Save as Global Benchmark (Calls saveGlobalStandardDelays)
   const handleSaveAsGlobalStandard = async () => {
     setIsSaving(true)
     setSaveSuccessMsg(null)
@@ -385,16 +327,14 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
     try {
       const res = await saveGlobalStandardDelays(targetDelays)
       if (!res.success) {
-        throw new Error(res.error || 'Gagal menyimpan standar acuan global.')
+        throw new Error(res.error || 'Gagal menyimpan acuan global.')
       }
 
-      // Also save to this exam if studentId exists
-      if (studentId) {
-        await saveExamTargetDelays(studentId, delayData, targetDelays)
+      setSaveSuccessMsg('Berhasil menetapkan urutan ini sebagai Standar Acuan Global untuk seluruh ujian peserta!')
+      if (onDataUpdated) {
+        onDataUpdated(targetDelays)
       }
-
-      setSaveSuccessMsg('Berhasil menetapkan urutan ini sebagai Standar Acuan Global untuk semua peserta!')
-      setTimeout(() => setSaveSuccessMsg(null), 4500)
+      setTimeout(() => setSaveSuccessMsg(null), 5000)
     } catch (err: any) {
       setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan acuan global.')
     } finally {
@@ -455,27 +395,41 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
     const simVal = getHole(simulatedFlat, hole)
     const targetVal = getHole(targetDelays, hole)
     const isMatch = simVal === targetVal
-    const isSelected = isEditMode && selectedHoles.includes(hole)
+    const isSelected = isGlobalMode && selectedHoles.includes(hole)
 
-    // Node fill color: White for students; Green (match) or Amber (mismatch) for admin
-    const nodeColor = !isAdminView
-      ? '#FFFFFF'
+    // Node fill color:
+    // When editing Global Standard: Cyan if selected, Yellow default (#FFF000)
+    // When evaluating Student Exam:
+    // Green (#22C55E) if Sesuai Standar
+    // Red (#EF4444) if Tidak Sesuai Standar!
+    const nodeColor = isGlobalMode
+      ? isSelected
+        ? '#00E5FF'
+        : '#FFF000'
       : isMatch
       ? '#22C55E'
-      : '#F59E0B'
+      : '#EF4444'
+
+    const glowColor = isGlobalMode
+      ? isSelected
+        ? '#00E5FF'
+        : '#FFF000'
+      : isMatch
+      ? '#22C55E'
+      : '#EF4444'
 
     return (
       <g
         key={`hole-node-${hole}`}
-        className={isEditMode ? 'cursor-pointer' : ''}
+        className={isGlobalMode ? 'cursor-pointer' : ''}
         onClick={() => {
-          if (isEditMode) {
+          if (isGlobalMode) {
             handleToggleHoleSelection(hole)
           }
         }}
       >
-        {/* Invisible enlarged hit target for easy clicking */}
-        {isEditMode && (
+        {/* Invisible enlarged hit target for easy clicking (No hover scale to prevent jitter) */}
+        {isGlobalMode && (
           <circle
             cx={cx}
             cy={cy}
@@ -485,7 +439,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
           />
         )}
 
-        {/* Selection indicator ring when in Edit Mode */}
+        {/* Selection indicator ring when in Global Edit Mode */}
         {isSelected && (
           <circle
             cx={cx}
@@ -498,54 +452,53 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
           />
         )}
 
-        {/* Outer Glow in Admin View */}
-        {isAdminView && (
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r + 1.5}
-            fill="none"
-            stroke={isSelected ? '#00E5FF' : isMatch ? '#22C55E' : '#F59E0B'}
-            strokeWidth="1"
-            opacity="0.4"
-          />
-        )}
+        {/* Outer Glow */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r + 1.5}
+          fill="none"
+          stroke={glowColor}
+          strokeWidth="1.5"
+          opacity={isMatch ? '0.4' : '0.7'}
+        />
 
-        {/* Blast Hole Circle */}
+        {/* Blast Hole Circle: Green if match, Red if mismatch! */}
         <circle
           cx={cx}
           cy={cy}
           r={r}
-          fill={isSelected ? '#00E5FF' : nodeColor}
+          fill={nodeColor}
           stroke={isSelected ? '#FFFFFF' : '#000000'}
           strokeWidth={isSelected ? 2.5 : 1.5}
+          className="transition-colors"
         />
 
-        {/* VALUE 1 (TOP): Simulated Input from VR Simulator */}
+        {/* VALUE 1 (TOP): Nilai Simulasi Peserta (atau Acuan Standar jika di Global Editor) */}
         <text
           x={textX}
-          y={isAdminView ? textYSim : textYSim + 4}
+          y={textYSim}
           fill="#FFFFFF"
           fontSize={fontSize}
           fontWeight="bold"
           fontFamily="monospace"
           textAnchor={textAnchor}
-          filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+          filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.95))"
         >
-          {simVal} ms
+          {isGlobalMode ? `${targetVal} ms` : `${simVal} ms`}
         </text>
 
-        {/* VALUE 2 (BOTTOM): Expected / Standard Target Delay (Admin ONLY) */}
-        {isAdminView && (
+        {/* VALUE 2 (BOTTOM): Nilai Standar Acuan Global (Merah jika selisih, Hijau jika sesuai) */}
+        {!isGlobalMode && (
           <text
             x={textX}
             y={textYTarget}
-            fill={isSelected ? '#00E5FF' : '#FFFF00'}
+            fill={isMatch ? '#86EFAC' : '#FCA5A5'}
             fontSize={fontSize - 1.5}
             fontWeight="bold"
             fontFamily="monospace"
             textAnchor={textAnchor}
-            filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+            filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.95))"
             className="select-none"
           >
             Std: {targetVal} ms
@@ -562,99 +515,83 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-800/80">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-black tracking-widest text-[#FFF000] uppercase bg-black/60 px-3 py-1 rounded-md border border-yellow-500/30">
-              📊 DATA REALTIME UNREAL ENGINE
-            </span>
-
-            {isAdminView ? (
-              <span className="text-[10px] font-bold tracking-wider text-cyan-300 uppercase bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-500/40 flex items-center">
-                <Sparkles className="w-3 h-3 mr-1 text-cyan-400" />
-                Mode Administrator & Evaluasi Acuan
+            {isGlobalMode ? (
+              <span className="text-[10px] font-black tracking-widest text-slate-950 uppercase bg-[#FFF000] px-3 py-1 rounded-md border border-yellow-300 flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-slate-950" />
+                PENGATURAN STANDAR ACUAN GLOBAL (UNTUK SEMUA UJIAN PESERTA)
               </span>
             ) : (
-              <span className="text-[10px] font-bold tracking-wider text-gray-300 uppercase bg-gray-900/60 px-2.5 py-1 rounded-md border border-gray-700">
-                Portal Peserta
+              <span className="text-[10px] font-black tracking-widest text-[#FFF000] uppercase bg-black/60 px-3 py-1 rounded-md border border-yellow-500/30">
+                📊 EVALUASI KESESUAIAN TERHADAP STANDAR GLOBAL
               </span>
             )}
           </div>
 
           <h3 className="text-lg sm:text-xl font-bold text-white mt-1.5 flex items-center gap-2">
-            {title || 'Diagram Setting Delay Peledakan Tambang Bawah Tanah'}
-            {studentName && <span className="text-yellow-400 font-semibold text-sm">({studentName})</span>}
+            {isGlobalMode
+              ? 'Standar Delay Peledakan BDTBT ESDM (Template Master)'
+              : title || 'Diagram Setting Delay Peledakan'}
+            {studentName && !isGlobalMode && (
+              <span className="text-yellow-400 font-semibold text-sm">({studentName})</span>
+            )}
           </h3>
         </div>
 
-        {/* Admin Controls & Mode Switch */}
-        {isAdminView && (
-          <div className="flex flex-wrap items-center gap-2">
-            
-            {/* View Mode Switch (Diagram vs Table) */}
-            <div className="bg-slate-900 p-1 rounded-xl border border-gray-800 flex items-center">
-              <button
-                type="button"
-                onClick={() => setViewMode('visual')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'visual'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                Diagram Visual
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'table'
-                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                Input Tabel (66 Lubang)
-              </button>
-            </div>
-
-            {/* Toggle Edit Mode */}
+        {/* View Mode Switch (Visual vs Table) & Global Save Button */}
+        <div className="flex flex-wrap items-center gap-2">
+          
+          {/* Switch View Mode */}
+          <div className="bg-slate-900 p-1 rounded-xl border border-gray-800 flex items-center">
             <button
               type="button"
-              onClick={() => {
-                setIsEditMode(!isEditMode)
-                if (isEditMode) {
-                  setSelectedHoles([])
-                  setShowBatchEditor(false)
-                }
-              }}
-              className={`inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border ${
-                isEditMode
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-300 ring-2 ring-cyan-400/50'
-                  : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-500/40 hover:border-cyan-400'
+              onClick={() => setViewMode('visual')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'visual'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-              {isEditMode ? 'Selesai Mengedit' : 'Edit Delay Acuan'}
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Diagram Visual
             </button>
-
-            {isEditMode && (
-              <button
-                type="button"
-                onClick={() => setShowBatchEditor(!showBatchEditor)}
-                className="inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-gray-200 border border-gray-700 transition-all cursor-pointer"
-              >
-                <Layers className="w-3.5 h-3.5 mr-1.5 text-yellow-400" />
-                {showBatchEditor ? 'Tutup Panel Formasi' : 'Atur per Formasi'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'table'
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              {isGlobalMode ? 'Input Tabel (66 Lubang)' : 'Evaluasi Tabel (66 Lubang)'}
+            </button>
           </div>
-        )}
+
+          {/* In Global Mode: Save Button right in header */}
+          {isGlobalMode && (
+            <button
+              type="button"
+              onClick={handleSaveAsGlobalStandard}
+              disabled={isSaving}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Simpan Standar Global
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ADMIN EVALUATION COMPARISON SUMMARY BAR */}
-      {isAdminView && (
+      {/* EVALUATION COMPARISON SUMMARY BAR (Only in Per-Exam View) */}
+      {!isGlobalMode && (
         <div className="mb-5 p-3.5 bg-slate-900/80 rounded-2xl border border-gray-800 flex flex-wrap items-center justify-between gap-4 text-xs">
           
-          {/* Comparison Legend */}
+          {/* Comparison Legend: Green for Match, Red for Mismatch */}
           <div className="flex flex-wrap items-center gap-4">
             <span className="text-gray-400 font-semibold uppercase text-[10px] tracking-wider">Keterangan:</span>
             
@@ -665,30 +602,34 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-600"></span>
-              <span className="text-yellow-300 font-medium">Nilai Bawah: <strong className="text-yellow-200">Acuan Standar (Std)</strong></span>
+              <span className="text-yellow-300 font-medium">Nilai Bawah: <strong className="text-yellow-200">Standar Acuan Global (Std)</strong></span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-              <span className="text-green-400 font-medium">Hijau: Sesuai</span>
+            <div className="flex items-center gap-1.5 bg-green-950/60 px-2.5 py-1 rounded-lg border border-green-600/40">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50"></span>
+              <span className="text-green-400 font-bold">Hijau: Sesuai Standar</span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-              <span className="text-amber-400 font-medium">Oranye: Selisih</span>
+            <div className="flex items-center gap-1.5 bg-red-950/60 px-2.5 py-1 rounded-lg border border-red-600/40">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50"></span>
+              <span className="text-red-400 font-bold">Merah: Tidak Sesuai Standar</span>
             </div>
           </div>
 
           {/* Quick Accuracy Score */}
-          <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-xl border border-gray-800">
+          <div className="flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-xl border border-gray-800">
             <div className="text-right">
-              <div className="text-[10px] text-gray-400 uppercase font-semibold">Tingkat Kesesuaian Delay</div>
-              <div className="text-sm font-black text-yellow-400 font-mono">
+              <div className="text-[10px] text-gray-400 uppercase font-semibold">Tingkat Kesesuaian Standar</div>
+              <div className={`text-sm font-black font-mono ${stats.mismatches === 0 ? 'text-green-400' : 'text-yellow-400'}`}>
                 {stats.matches} / {stats.total} Sesuai ({stats.accuracy}%)
               </div>
             </div>
-            <div className={`p-1.5 rounded-lg ${stats.accuracy >= 80 ? 'bg-green-950/80 text-green-400' : 'bg-amber-950/80 text-amber-400'}`}>
-              {stats.accuracy >= 80 ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+            <div className={`p-1.5 rounded-lg border ${
+              stats.mismatches === 0 
+                ? 'bg-green-950/80 text-green-400 border-green-600/50' 
+                : 'bg-red-950/80 text-red-400 border-red-600/50'
+            }`}>
+              {stats.mismatches === 0 ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <AlertCircle className="w-5 h-5 text-red-400" />}
             </div>
           </div>
 
@@ -711,7 +652,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
       {saveErrorMsg && (
         <div className="mb-4 p-3 bg-rose-950/80 border border-rose-500/50 rounded-2xl text-xs text-rose-300 flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
             <span className="font-semibold">{saveErrorMsg}</span>
           </div>
           <button type="button" onClick={() => setSaveErrorMsg(null)} className="text-gray-400 hover:text-white cursor-pointer">
@@ -720,38 +661,28 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
         </div>
       )}
 
-      {/* EDIT MODE TOOLBAR & CONTROLS */}
-      {isAdminView && isEditMode && (
+      {/* GLOBAL STANDARD EDITING TOOLBAR (Only shown in Global Standard Mode) */}
+      {isGlobalMode && (
         <div className="mb-6 p-4 sm:p-5 bg-slate-950/95 rounded-2xl border border-cyan-500/50 shadow-2xl space-y-4 animate-in slide-in-from-top-3">
           
-          {/* Top Row: Save Buttons & Global Controls */}
+          {/* Top Row: Information & Reset */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-800">
             <div>
               <h4 className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
-                <Edit3 className="w-4 h-4 text-cyan-400" />
-                Panel Pengeditan Delay Acuan (Input Manual Bebas Angka)
+                <Globe className="w-4 h-4 text-cyan-400" />
+                Atur Nilai Standar Acuan Global BDTBT
               </h4>
               <p className="text-xs text-gray-400 mt-0.5">
-                Pilih lubang (bisa pilih banyak sekaligus atau pilih semua), lalu ketik angka manual berapa pun sesuai standar yang diinginkan.
+                Pilih lubang (bisa pilih banyak atau per formasi), lalu ketik angka delay acuan yang seharusnya. Nilai ini menjadi standar penilaian untuk seluruh ujian.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={handleCopyFromSimulation}
-                className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-xl border border-gray-700 font-semibold cursor-pointer flex items-center gap-1"
-                title="Salin seluruh delay hasil simulasi peserta ke acuan standar"
-              >
-                <Copy className="w-3.5 h-3.5 text-cyan-400" />
-                Salin dari Simulasi
-              </button>
-
-              <button
-                type="button"
                 onClick={handleResetToDefault}
                 className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-xl border border-gray-700 font-semibold cursor-pointer flex items-center gap-1"
-                title="Kembalikan semua nilai ke acuan resmi BDTBT ESDM"
+                title="Kembalikan semua nilai ke acuan default BDTBT ESDM"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-yellow-400" />
                 Reset Standar BDTBT
@@ -759,23 +690,12 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
               <button
                 type="button"
-                onClick={handleSaveForThisExam}
-                disabled={isSaving}
-                className="inline-flex items-center px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
-              >
-                {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-                Simpan untuk Ujian Ini
-              </button>
-
-              <button
-                type="button"
                 onClick={handleSaveAsGlobalStandard}
                 disabled={isSaving}
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 rounded-xl text-xs font-extrabold transition-all shadow-md disabled:opacity-50 cursor-pointer"
-                title="Menetapkan template delay ini untuk seluruh peserta dan ujian baru"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md disabled:opacity-50 cursor-pointer"
               >
-                <Globe className="w-3.5 h-3.5 mr-1.5" />
-                Jadikan Acuan Global
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                Simpan Standar Global
               </button>
             </div>
           </div>
@@ -854,7 +774,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
             {/* MANUAL NUMBER INPUT & STEPPER */}
             <form onSubmit={handleApplyManualToSelected} className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-300 mr-1">Nilai Delay:</span>
+              <span className="text-xs font-semibold text-gray-300 mr-1">Nilai Delay Standar:</span>
               
               <div className="flex items-center bg-slate-950 rounded-xl border border-cyan-500/60 p-1 shadow-md">
                 <button
@@ -924,7 +844,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
           {/* Quick Preset Pills as optional shortcuts */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs text-gray-400">
-            <span className="font-semibold text-[11px] text-gray-400 mr-1">Atau shortcut cepat:</span>
+            <span className="font-semibold text-[11px] text-gray-400 mr-1">Shortcut Cepat:</span>
             {QUICK_PRESETS.map((preset) => (
               <button
                 key={preset}
@@ -940,67 +860,6 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
               </button>
             ))}
           </div>
-
-          {/* BATCH SECTION COLLAPSIBLE ACCORDION */}
-          {showBatchEditor && (
-            <div className="p-4 bg-slate-900/90 rounded-2xl border border-gray-800 space-y-3 mt-3 animate-in fade-in">
-              <div className="flex items-center justify-between pb-2 border-b border-gray-800">
-                <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center">
-                  <Layers className="w-3.5 h-3.5 mr-1.5" />
-                  Atur Input Manual per Seluruh Formasi Bagian:
-                </span>
-                <span className="text-xs text-gray-400">
-                  Ketik angka bebas langsung di setiap formasi lalu klik Terapkan.
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {SECTIONS.map((sec) => (
-                  <div
-                    key={sec.id}
-                    className="p-3 bg-slate-950 rounded-xl border border-gray-800 flex flex-col justify-between gap-2 shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-200">{sec.label}</span>
-                        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded">
-                          {sec.holes.length} lubang
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{sec.description}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-gray-800/80">
-                      <input
-                        type="number"
-                        min="0"
-                        max="5000"
-                        step="1"
-                        value={sectionInputs[sec.id] ?? ''}
-                        onChange={(e) =>
-                          setSectionInputs((prev) => ({
-                            ...prev,
-                            [sec.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="ms..."
-                        className="w-20 px-2 py-1 bg-slate-900 border border-gray-700 text-white font-mono font-bold text-xs rounded-lg outline-none focus:border-cyan-400"
-                      />
-                      <span className="text-xs font-mono text-gray-400">ms</span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleApplySectionManual(sec.id, sec.holes)}
-                        className="ml-auto px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-colors"
-                      >
-                        Terapkan
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
       )}
@@ -1247,7 +1106,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
         </div>
       ) : (
-        /* VIEW MODE 2: FAST TABLE / FORM GRID INPUT FOR ALL 66 HOLES */
+        /* VIEW MODE 2: TABLE GRID (EDITABLE IN GLOBAL MODE, COMPARISON IN PER-EXAM VIEW) */
         <div className="space-y-6 animate-in fade-in duration-200">
           
           {/* Table Search & Filter Bar */}
@@ -1263,25 +1122,27 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSelectAllHoles}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
-              >
-                Pilih Semua
-              </button>
-              <button
-                type="button"
-                onClick={handleClearSelection}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
-              >
-                Bersihkan Pilihan
-              </button>
-            </div>
+            {isGlobalMode && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAllHoles}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
+                >
+                  Pilih Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
+                >
+                  Bersihkan Pilihan
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Formations List with direct editable table rows */}
+          {/* Formations List */}
           <div className="space-y-4">
             {SECTIONS.map((sec) => {
               const filteredHoles = sec.holes.filter((h) => {
@@ -1296,7 +1157,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
 
               if (filteredHoles.length === 0) return null
 
-              const allSecSelected = sec.holes.every((h) => selectedHoles.includes(h))
+              const allSecSelected = isGlobalMode && sec.holes.every((h) => selectedHoles.includes(h))
 
               return (
                 <div
@@ -1306,18 +1167,20 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                   {/* Section Group Header */}
                   <div className="p-3.5 bg-slate-900 border-b border-gray-800 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSectionSelection(sec.holes)}
-                        className="text-gray-400 hover:text-cyan-400 cursor-pointer"
-                        title={allSecSelected ? 'Batal pilih formasi ini' : 'Pilih semua di formasi ini'}
-                      >
-                        {allSecSelected ? (
-                          <CheckSquare className="w-4 h-4 text-cyan-400" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
+                      {isGlobalMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSectionSelection(sec.holes)}
+                          className="text-gray-400 hover:text-cyan-400 cursor-pointer"
+                          title={allSecSelected ? 'Batal pilih formasi ini' : 'Pilih semua di formasi ini'}
+                        >
+                          {allSecSelected ? (
+                            <CheckSquare className="w-4 h-4 text-cyan-400" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <span>{sec.label}</span>
                         <span className="text-xs font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded-full border border-cyan-500/30">
@@ -1326,32 +1189,34 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                       </h4>
                     </div>
 
-                    {/* Set All in this Section Quick Input */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-gray-400 font-semibold">Set Semua di Bagian Ini:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="5000"
-                        step="1"
-                        value={sectionInputs[sec.id] ?? ''}
-                        onChange={(e) =>
-                          setSectionInputs((prev) => ({
-                            ...prev,
-                            [sec.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="ms..."
-                        className="w-20 px-2 py-1 bg-slate-950 border border-gray-700 text-white font-mono font-bold text-xs rounded-lg outline-none focus:border-cyan-400 text-center"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleApplySectionManual(sec.id, sec.holes)}
-                        className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-colors"
-                      >
-                        Terapkan
-                      </button>
-                    </div>
+                    {/* Set All in this Section Quick Input (Global Editor Mode Only) */}
+                    {isGlobalMode && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-gray-400 font-semibold">Set Semua di Bagian Ini:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="5000"
+                          step="1"
+                          value={sectionInputs[sec.id] ?? ''}
+                          onChange={(e) =>
+                            setSectionInputs((prev) => ({
+                              ...prev,
+                              [sec.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="ms..."
+                          className="w-20 px-2 py-1 bg-slate-950 border border-gray-700 text-white font-mono font-bold text-xs rounded-lg outline-none focus:border-cyan-400 text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleApplySectionManual(sec.id, sec.holes)}
+                          className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                        >
+                          Terapkan
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Hole Rows Grid */}
@@ -1360,7 +1225,7 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                       const simVal = getHole(simulatedFlat, hole)
                       const targetVal = getHole(targetDelays, hole)
                       const isMatch = simVal === targetVal
-                      const isSelected = selectedHoles.includes(hole)
+                      const isSelected = isGlobalMode && selectedHoles.includes(hole)
                       const diff = targetVal - simVal
 
                       return (
@@ -1369,21 +1234,27 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                           className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                             isSelected
                               ? 'bg-cyan-950/40 border-cyan-500/70 shadow-sm'
-                              : 'bg-slate-900/60 border-gray-800/80 hover:border-gray-700'
+                              : isGlobalMode
+                              ? 'bg-slate-900/60 border-gray-800/80 hover:border-gray-700'
+                              : isMatch
+                              ? 'bg-green-950/20 border-green-800/40'
+                              : 'bg-red-950/25 border-red-800/50'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleHoleSelection(hole)}
-                              className="text-gray-400 hover:text-cyan-400 cursor-pointer flex-shrink-0"
-                            >
-                              {isSelected ? (
-                                <CheckSquare className="w-4 h-4 text-cyan-400" />
-                              ) : (
-                                <Square className="w-4 h-4" />
-                              )}
-                            </button>
+                            {isGlobalMode && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleHoleSelection(hole)}
+                                className="text-gray-400 hover:text-cyan-400 cursor-pointer flex-shrink-0"
+                              >
+                                {isSelected ? (
+                                  <CheckSquare className="w-4 h-4 text-cyan-400" />
+                                ) : (
+                                  <Square className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -1394,41 +1265,48 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({
                                   {getHoleName(hole).replace(`Hole ${hole} `, '')}
                                 </span>
                               </div>
-                              <div className="text-[10px] text-gray-400 mt-0.5 font-mono">
-                                Simulasi: <strong className="text-white">{simVal} ms</strong>
-                              </div>
+                              
+                              {!isGlobalMode && (
+                                <div className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                                  Simulasi: <strong className="text-white">{simVal} ms</strong>
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Direct Manual Number Input for this hole */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <input
-                              type="number"
-                              min="0"
-                              max="5000"
-                              step="1"
-                              value={targetVal}
-                              onChange={(e) =>
-                                handleSetHoleValue(hole, parseInt(e.target.value, 10) || 0)
-                              }
-                              className={`w-18 px-2 py-1 bg-slate-950 border font-mono font-bold text-xs rounded-lg text-center outline-none focus:ring-1 transition-all ${
-                                isMatch
-                                  ? 'border-green-600/70 text-green-300 focus:ring-green-400'
-                                  : 'border-yellow-600/70 text-yellow-300 focus:ring-yellow-400'
-                              }`}
-                            />
-                            <span className="text-[10px] font-mono text-gray-400">ms</span>
-
-                            <div
-                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                isMatch ? 'bg-green-500' : 'bg-amber-500'
-                              }`}
-                              title={
-                                isMatch
-                                  ? 'Nilai Sesuai dengan Simulasi'
-                                  : `Selisih: ${diff > 0 ? `+${diff}` : diff} ms`
-                              }
-                            />
+                          {/* Direct Manual Number Input (Global Mode) or Evaluation Badge (Per-Exam Mode) */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {isGlobalMode ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="5000"
+                                  step="1"
+                                  value={targetVal}
+                                  onChange={(e) =>
+                                    handleSetHoleValue(hole, parseInt(e.target.value, 10) || 0)
+                                  }
+                                  className="w-20 px-2 py-1 bg-slate-950 border border-cyan-500/50 text-cyan-300 font-mono font-bold text-xs rounded-lg text-center outline-none focus:ring-1 focus:ring-cyan-400 transition-all"
+                                />
+                                <span className="text-[10px] font-mono text-gray-400">ms</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="text-xs font-mono font-bold text-yellow-300">
+                                  Std: {targetVal} ms
+                                </div>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                                    isMatch
+                                      ? 'bg-green-950/80 text-green-400 border-green-600/50'
+                                      : 'bg-red-950/80 text-red-400 border-red-600/50'
+                                  }`}
+                                >
+                                  {isMatch ? '✓ Sesuai' : `✕ Selisih ${diff > 0 ? `+${diff}` : diff} ms`}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )

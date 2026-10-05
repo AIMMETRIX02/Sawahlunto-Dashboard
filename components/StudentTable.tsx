@@ -22,7 +22,8 @@ import {
   FileText,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Globe
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import dynamic from 'next/dynamic'
@@ -97,6 +98,7 @@ export function StudentTable() {
   const [isCertificateModalOpen, setIsCertificateModalOpen] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false)
+  const [isGlobalDelayModalOpen, setIsGlobalDelayModalOpen] = useState(false)
   const [isParticipantCardsModalOpen, setIsParticipantCardsModalOpen] = useState(false)
   
   const [editingStudent, setEditingStudent] = useState<StudentData | null>(null)
@@ -497,6 +499,17 @@ export function StudentTable() {
             )}
           </div>
 
+          {/* Tombol Atur Standar Global */}
+          <button
+            type="button"
+            onClick={() => setIsGlobalDelayModalOpen(true)}
+            className="h-10 px-4 flex-shrink-0 whitespace-nowrap bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center cursor-pointer gap-1.5"
+            title="Atur Standar Delay Acuan Global untuk Seluruh Ujian Peserta"
+          >
+            <Globe className="h-4 w-4 text-cyan-400" />
+            <span>Atur Standar Global</span>
+          </button>
+
           {/* Tambah Data Button */}
           <button 
             onClick={openCreateModal}
@@ -846,13 +859,35 @@ export function StudentTable() {
         />
       )}
 
-      {/* Delay Diagram Modal */}
+      {/* Delay Diagram Modal (Per-Ujian View/Evaluation against Global Standard) */}
       {isDelayModalOpen && delayStudent && (
         <DelayDiagramModal
           isOpen={isDelayModalOpen}
           onClose={() => setIsDelayModalOpen(false)}
           title={`${delayStudent.modul || 'Simulasi Peledakan'} (${delayStudent.nama} - ${delayStudent.tanggal})`}
           delayData={delayStudent.delay_data}
+          studentId={delayStudent.id}
+          studentName={delayStudent.nama}
+          isAdminView={true}
+          isGlobalMode={false}
+          onDataUpdated={() => {
+            fetchData()
+          }}
+        />
+      )}
+
+      {/* Global Standard Delay Diagram Modal */}
+      {isGlobalDelayModalOpen && (
+        <DelayDiagramModal
+          isOpen={isGlobalDelayModalOpen}
+          onClose={() => setIsGlobalDelayModalOpen(false)}
+          title="Konfigurasi Acuan Standar Seluruh Peserta"
+          isGlobalMode={true}
+          isAdminView={true}
+          onDataUpdated={() => {
+            fetchData()
+            setToast({ message: 'Standar Delay Acuan Global berhasil diperbarui untuk seluruh peserta!', type: 'success' })
+          }}
         />
       )}
 
