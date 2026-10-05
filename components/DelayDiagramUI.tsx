@@ -1,18 +1,128 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import {
+  Edit3,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
+  Save,
+  Globe,
+  Sparkles,
+  Info,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Copy,
+  Layers,
+  Check,
+  Table as TableIcon,
+  LayoutGrid,
+  CheckSquare,
+  Square,
+  Search,
+  Plus,
+  Minus
+} from 'lucide-react'
+import {
+  DEFAULT_BENCHMARK_DELAYS,
+  fetchStandardDelayData,
+  saveExamTargetDelays,
+  saveGlobalStandardDelays
+} from '@/lib/examHelpers'
 
-interface DelayDiagramProps {
+export interface DelayDiagramProps {
   delayData?: any // Can be array, matrix, or object from Unreal Engine
   title?: string
+  studentId?: string
+  studentName?: string
+  isAdminView?: boolean
+  onDataUpdated?: (updatedDelayData: any) => void
 }
 
-export const DelayDiagramUI = React.memo(function DelayDiagramUI({ delayData, title }: DelayDiagramProps) {
-  // Parse data input from Unreal Engine flexible structure
-  const parsedData = useMemo(() => {
-    let raw = delayData
+export interface FormationSection {
+  id: string
+  label: string
+  shortLabel: string
+  description: string
+  holes: number[]
+  defaultVal: number
+}
 
-    // Parse JSON string if needed
+// Section definitions for batch edits & table grouping (covers all 66 holes)
+const SECTIONS: FormationSection[] = [
+  {
+    id: 'box_cut',
+    label: 'Box Cut (Area Tengah / V-Cut)',
+    shortLabel: 'Box Cut (11)',
+    description: 'Hole 0 sampai 10 di area tengah terowongan',
+    holes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    defaultVal: 50,
+  },
+  {
+    id: 'floor',
+    label: 'Lantai / Lifters (Dasar Terowongan)',
+    shortLabel: 'Lantai (7)',
+    description: 'Hole 11 sampai 17 di baris lantai terbawah',
+    holes: [11, 12, 13, 14, 15, 16, 17],
+    defaultVal: 200,
+  },
+  {
+    id: 'walls_left',
+    label: 'Dinding Sisi Kiri (Left Wall)',
+    shortLabel: 'Dinding Kiri (6)',
+    description: 'Hole 18, 25, 31, 38, 45, 52',
+    holes: [18, 25, 31, 38, 45, 52],
+    defaultVal: 150,
+  },
+  {
+    id: 'walls_right',
+    label: 'Dinding Sisi Kanan (Right Wall)',
+    shortLabel: 'Dinding Kanan (6)',
+    description: 'Hole 24, 30, 37, 44, 51, 58',
+    holes: [24, 30, 37, 44, 51, 58],
+    defaultVal: 150,
+  },
+  {
+    id: 'roof',
+    label: 'Atap / Roof (Lengkung Terowongan)',
+    shortLabel: 'Atap / Roof (7)',
+    description: 'Hole 59 sampai 65 kontur kubah atap',
+    holes: [59, 60, 61, 62, 63, 64, 65],
+    defaultVal: 175,
+  },
+  {
+    id: 'grid_upper',
+    label: 'Grid Peledakan Atas (Row 1 - 2)',
+    shortLabel: 'Grid Atas (10)',
+    description: 'Hole 46-50 (Row 2) & Hole 53-57 (Row 1)',
+    holes: [46, 47, 48, 49, 50, 53, 54, 55, 56, 57],
+    defaultVal: 125,
+  },
+  {
+    id: 'grid_lower',
+    label: 'Grid Peledakan Bawah (Row 3 - 6)',
+    shortLabel: 'Grid Bawah (19)',
+    description: 'Hole 19-23, 26-29, 32-36, 39-43',
+    holes: [19, 20, 21, 22, 23, 26, 27, 28, 29, 32, 33, 34, 35, 36, 39, 40, 41, 42, 43],
+    defaultVal: 75,
+  },
+]
+
+const QUICK_PRESETS = [0, 25, 50, 75, 100, 125, 150, 175, 200, 250]
+
+export const DelayDiagramUI = React.memo(function DelayDiagramUI({
+  delayData,
+  title,
+  studentId,
+  studentName,
+  isAdminView = false,
+  onDataUpdated,
+}: DelayDiagramProps) {
+  // 1. Extract simulation delay values (66 numbers from VR simulator)
+  const simulatedFlat: number[] = useMemo(() => {
+    let raw = delayData
     if (typeof raw === 'string') {
       try {
         raw = JSON.parse(raw)
@@ -20,412 +130,1309 @@ export const DelayDiagramUI = React.memo(function DelayDiagramUI({ delayData, ti
         raw = null
       }
     }
+    if (!raw) return new Array(66).fill(0)
 
-    // Default structure fallback
-    const defaultGrid = [
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0],
-    ]
-
-    const defaultPerimeter = {
-      top: [0, 0, 0, 0, 0],
-      left: [0, 0, 0, 0, 0, 0, 0],
-      right: [0, 0, 0, 0, 0, 0, 0],
-      bottom: [0, 0, 0, 0, 0, 0],
-    }
-
-    const defaultBoxCut = {
-      outer: [0, 0, 0, 0, 0, 0, 0, 0],
-      inner: [0, 0, 0], // 3 yellow V-cut nodes
-    }
-
-    const parseVal = (val: any) => {
-      if (typeof val === 'number') return val
-      const parsed = parseInt(val, 10)
-      return isNaN(parsed) ? 0 : parsed
-    }
-
-    const parseArr = (arr: any[]) => (Array.isArray(arr) ? arr.map(parseVal) : [])
-
-    if (!raw) {
-      return { grid: defaultGrid, perimeter: defaultPerimeter, boxCut: defaultBoxCut }
-    }
-
-    // Case 1: Simple 1D Flat Array of numbers from Unreal Engine (66 elements)
     if (Array.isArray(raw)) {
       if (typeof raw[0] === 'number' || (raw.length > 1 && typeof raw[1] === 'number')) {
-        const flat = raw
-
-        // Helper: Blueprint Hole N maps to flat[N-1] (1-based slot shift from Unreal Engine Blueprint)
-        const getHole = (holeNum: number) => {
-          if (holeNum === 0) return parseVal(flat[65] ?? flat[0] ?? 0)
-          return parseVal(flat[holeNum - 1] ?? 0)
-        }
-
-        // Exact 1-to-1 Blueprint Index N to Hole N Mapping from Blueprint Diagram
-        const outer = [
-          getHole(8),  // 0: Top-Left Corner (Hole 8)
-          getHole(5),  // 1: Top-Center Edge (Hole 5)
-          getHole(9),  // 2: Top-Right Corner (Hole 9)
-          getHole(4),  // 3: Right-Center Edge (Hole 4)
-          getHole(10), // 4: Bottom-Right Corner (Hole 10 -> flat[9] = 25 ms!)
-          getHole(3),  // 5: Bottom-Center Edge (Hole 3 -> flat[2] = 125 ms)
-          getHole(7),  // 6: Bottom-Left Corner (Hole 7 -> flat[6] = 125 ms)
-          getHole(6),  // 7: Left-Center Edge (Hole 6 -> flat[5] = 125 ms)
-        ]
-
-        const inner = [
-          0,          // 0: Apex Yellow (No text data)
-          getHole(1), // 1: Top-Left White (Hole 1)
-          getHole(2), // 2: Top-Right White (Hole 2)
-          getHole(0), // 3: Center White (Hole 0 -> flat[65] = 125 ms)
-          0,          // 4: Left Base Yellow (No text data)
-          0,          // 5: Right Base Yellow (No text data)
-        ]
-
-        // Grid Rows mapped from Hole Numbers (Top Row = Row 6 in Blueprint = Holes 53..57 down to Floor = Holes 19..23)
-        const grid = [
-          [getHole(53), getHole(54), getHole(55), getHole(56), getHole(57)], // Inner Row 1 (Top)
-          [getHole(46), getHole(47), getHole(48), getHole(49), getHole(50)], // Inner Row 2
-          [getHole(39), getHole(40), getHole(41), getHole(42), getHole(43)], // Inner Row 3
-          [getHole(32), getHole(33), getHole(34), getHole(35), getHole(36)], // Inner Row 4
-          [getHole(26), getHole(27), getHole(0),  getHole(28), getHole(29)], // Inner Row 5 (Box Cut center)
-          [getHole(19), getHole(20), getHole(21), getHole(22), getHole(23)], // Inner Row 6 (Bottom)
-        ]
-
-        // Perimeter Contour Nodes mapped from Hole Numbers
-        const top = [getHole(60), getHole(61), getHole(62), getHole(63), getHole(64)]
-        const left = [getHole(59), getHole(52), getHole(45), getHole(38), getHole(31), getHole(25), getHole(18)]
-        const right = [getHole(65), getHole(58), getHole(51), getHole(44), getHole(37), getHole(30), getHole(24)]
-        const bottom = [getHole(11), getHole(12), getHole(13), getHole(14), getHole(15), getHole(16), getHole(17)]
-
-        return {
-          grid,
-          perimeter: { top, left, right, bottom },
-          boxCut: { outer, inner },
-        }
-      }
-
-      // Case 2: 2D Grid Matrix Array
-      if (Array.isArray(raw[0])) {
-        return {
-          grid: raw.map((r: any[]) => parseArr(r)),
-          perimeter: defaultPerimeter,
-          boxCut: defaultBoxCut,
-        }
+        return raw.map((v) => Number(v) || 0)
       }
     }
 
-    // Case 3: Structured Object { grid, perimeter, box_cut }
     if (typeof raw === 'object') {
-      const rawGrid = raw.grid || raw.grid_delays || defaultGrid
-      const grid = Array.isArray(rawGrid)
-        ? rawGrid.map((r: any[]) => parseArr(r))
-        : defaultGrid
-
-      return {
-        grid,
-        perimeter: {
-          top: parseArr(raw.perimeter?.top || raw.top_delays || defaultPerimeter.top),
-          left: parseArr(raw.perimeter?.left || raw.left_delays || defaultPerimeter.left),
-          right: parseArr(raw.perimeter?.right || raw.right_delays || defaultPerimeter.right),
-          bottom: parseArr(raw.perimeter?.bottom || raw.bottom_delays || defaultPerimeter.bottom),
-        },
-        boxCut: {
-          outer: parseArr(raw.box_cut?.outer || raw.box_cut_delays || defaultBoxCut.outer),
-          inner: parseArr(raw.box_cut?.inner || raw.v_cut_delays || defaultBoxCut.inner),
-        },
+      if (Array.isArray(raw.simulation_delays)) {
+        return raw.simulation_delays.map((v: any) => Number(v) || 0)
+      }
+      if (Array.isArray(raw.delay_data)) {
+        return raw.delay_data.map((v: any) => Number(v) || 0)
+      }
+      // Check if numbered keys '0'..'65' exist
+      if ('0' in raw && '1' in raw) {
+        const arr = []
+        for (let i = 0; i < 66; i++) {
+          arr.push(Number(raw[i]) || 0)
+        }
+        return arr
       }
     }
 
-    return { grid: defaultGrid, perimeter: defaultPerimeter, boxCut: defaultBoxCut }
+    return new Array(66).fill(0)
   }, [delayData])
 
-  const { grid, perimeter, boxCut } = parsedData
+  // 2. Extract initial target delays (from exam record, or default benchmark)
+  const initialTargetFromRecord: number[] | null = useMemo(() => {
+    let raw = delayData
+    if (typeof raw === 'string') {
+      try {
+        raw = JSON.parse(raw)
+      } catch (e) {
+        raw = null
+      }
+    }
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      if (Array.isArray(raw.target_delays) && raw.target_delays.length >= 66) {
+        return raw.target_delays.map((v: any) => Number(v) || 0)
+      }
+      if (Array.isArray(raw.target_delay_data) && raw.target_delay_data.length >= 66) {
+        return raw.target_delay_data.map((v: any) => Number(v) || 0)
+      }
+    }
+    return null
+  }, [delayData])
+
+  // Editable Target Delays State
+  const [targetDelays, setTargetDelays] = useState<number[]>(
+    initialTargetFromRecord || DEFAULT_BENCHMARK_DELAYS
+  )
+  const [isEditMode, setIsEditMode] = useState<boolean>(false)
+  const [selectedHoles, setSelectedHoles] = useState<number[]>([])
+  const [manualInputValue, setManualInputValue] = useState<string>('')
+  const [viewMode, setViewMode] = useState<'visual' | 'table'>('visual')
+  const [showBatchEditor, setShowBatchEditor] = useState<boolean>(false)
+  const [tableSearch, setTableSearch] = useState<string>('')
+  
+  // Section manual input values
+  const [sectionInputs, setSectionInputs] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    SECTIONS.forEach((s) => {
+      initial[s.id] = String(s.defaultVal)
+    })
+    return initial
+  })
+
+  // Status message state
+  const [isSaving, setIsSaving] = useState<boolean>(false)
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null)
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null)
+
+  // Fetch standard global benchmark if no specific record override exists
+  useEffect(() => {
+    if (initialTargetFromRecord) {
+      setTargetDelays(initialTargetFromRecord)
+      return
+    }
+
+    let isMounted = true
+    const loadGlobalStandard = async () => {
+      try {
+        const standard = await fetchStandardDelayData()
+        if (isMounted && standard && standard.length >= 66) {
+          setTargetDelays(standard)
+        }
+      } catch (e) {
+        // fallback to default
+      }
+    }
+
+    if (isAdminView) {
+      loadGlobalStandard()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [initialTargetFromRecord, isAdminView])
+
+  // Helper to get hole value
+  const getHole = useCallback(
+    (arr: number[], holeNum: number) => {
+      if (holeNum === 0) return arr[65] ?? arr[0] ?? 0
+      return arr[holeNum - 1] ?? 0
+    },
+    []
+  )
+
+  // Helper to set single hole value
+  const handleSetHoleValue = useCallback((holeNum: number, value: number) => {
+    setTargetDelays((prev) => {
+      const next = [...prev]
+      if (holeNum === 0) {
+        next[65] = value
+      } else {
+        next[holeNum - 1] = value
+      }
+      return next
+    })
+  }, [])
+
+  // Helper to set multiple holes value
+  const handleSetMultipleHolesValue = useCallback((holes: number[], value: number) => {
+    setTargetDelays((prev) => {
+      const next = [...prev]
+      holes.forEach((holeNum) => {
+        if (holeNum === 0) {
+          next[65] = value
+        } else {
+          next[holeNum - 1] = value
+        }
+      })
+      return next
+    })
+  }, [])
+
+  // Toggle single hole selection
+  const handleToggleHoleSelection = useCallback((hole: number) => {
+    setSelectedHoles((prev) => {
+      const isAlready = prev.includes(hole)
+      const next = isAlready ? prev.filter((h) => h !== hole) : [...prev, hole]
+      // If exactly 1 hole is now selected, initialize manual input with its value
+      if (!isAlready && next.length === 1) {
+        setManualInputValue(String(getHole(targetDelays, hole)))
+      }
+      return next
+    })
+  }, [getHole, targetDelays])
+
+  // Select all 66 holes
+  const handleSelectAllHoles = useCallback(() => {
+    const all = []
+    for (let i = 0; i <= 65; i++) all.push(i)
+    setSelectedHoles(all)
+    if (!manualInputValue) {
+      setManualInputValue('50')
+    }
+  }, [manualInputValue])
+
+  // Deselect all
+  const handleClearSelection = useCallback(() => {
+    setSelectedHoles([])
+  }, [])
+
+  // Toggle selection for a whole section
+  const handleToggleSectionSelection = useCallback((sectionHoles: number[]) => {
+    setSelectedHoles((prev) => {
+      const allSelected = sectionHoles.every((h) => prev.includes(h))
+      if (allSelected) {
+        return prev.filter((h) => !sectionHoles.includes(h))
+      } else {
+        const union = new Set([...prev, ...sectionHoles])
+        return Array.from(union)
+      }
+    })
+  }, [])
+
+  // Apply manual input value to all selected holes
+  const handleApplyManualToSelected = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (selectedHoles.length === 0) return
+    const num = parseInt(manualInputValue, 10)
+    if (isNaN(num) || num < 0) return
+    handleSetMultipleHolesValue(selectedHoles, num)
+  }
+
+  // Adjust manual input value by delta
+  const handleAdjustManual = (delta: number) => {
+    const current = parseInt(manualInputValue, 10) || 0
+    const nextVal = Math.max(0, current + delta)
+    setManualInputValue(String(nextVal))
+    if (selectedHoles.length > 0) {
+      handleSetMultipleHolesValue(selectedHoles, nextVal)
+    }
+  }
+
+  // Set section value from manual input
+  const handleApplySectionManual = (sectionId: string, sectionHoles: number[]) => {
+    const valStr = sectionInputs[sectionId] ?? '50'
+    const num = parseInt(valStr, 10)
+    if (isNaN(num) || num < 0) return
+    handleSetMultipleHolesValue(sectionHoles, num)
+  }
+
+  // Copy participant simulation delays to target
+  const handleCopyFromSimulation = () => {
+    setTargetDelays([...simulatedFlat])
+  }
+
+  // Reset to standard BDTBT default
+  const handleResetToDefault = () => {
+    setTargetDelays([...DEFAULT_BENCHMARK_DELAYS])
+  }
+
+  // Save for this exam
+  const handleSaveForThisExam = async () => {
+    if (!studentId) {
+      setSaveErrorMsg('ID ujian tidak valid untuk disimpan ke database.')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveSuccessMsg(null)
+    setSaveErrorMsg(null)
+
+    try {
+      const res = await saveExamTargetDelays(studentId, delayData, targetDelays)
+      if (!res.success) {
+        throw new Error(res.error || 'Gagal menyimpan delay acuan.')
+      }
+
+      setSaveSuccessMsg('Berhasil menyimpan delay acuan untuk ujian peserta ini!')
+      if (onDataUpdated) {
+        onDataUpdated(res.data)
+      }
+      setTimeout(() => setSaveSuccessMsg(null), 4000)
+    } catch (err: any) {
+      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Save as Global Benchmark
+  const handleSaveAsGlobalStandard = async () => {
+    setIsSaving(true)
+    setSaveSuccessMsg(null)
+    setSaveErrorMsg(null)
+
+    try {
+      const res = await saveGlobalStandardDelays(targetDelays)
+      if (!res.success) {
+        throw new Error(res.error || 'Gagal menyimpan standar acuan global.')
+      }
+
+      // Also save to this exam if studentId exists
+      if (studentId) {
+        await saveExamTargetDelays(studentId, delayData, targetDelays)
+      }
+
+      setSaveSuccessMsg('Berhasil menetapkan urutan ini sebagai Standar Acuan Global untuk semua peserta!')
+      setTimeout(() => setSaveSuccessMsg(null), 4500)
+    } catch (err: any) {
+      setSaveErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan acuan global.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Calculate comparison statistics
+  const stats = useMemo(() => {
+    let matches = 0
+    for (let hole = 0; hole <= 65; hole++) {
+      const sim = getHole(simulatedFlat, hole)
+      const target = getHole(targetDelays, hole)
+      if (sim === target) matches++
+    }
+    const accuracy = Math.round((matches / 66) * 100)
+    return {
+      matches,
+      mismatches: 66 - matches,
+      accuracy,
+      total: 66,
+    }
+  }, [simulatedFlat, targetDelays, getHole])
+
+  // Hole Label descriptor
+  const getHoleName = (hole: number) => {
+    if (hole === 0) return 'Hole 0 (Box Cut Tengah)'
+    if (hole === 1) return 'Hole 1 (V-Cut Kiri Atas)'
+    if (hole === 2) return 'Hole 2 (V-Cut Kanan Atas)'
+    if (hole >= 3 && hole <= 10) return `Hole ${hole} (Box Cut Outer #${hole})`
+    if (hole >= 11 && hole <= 17) return `Hole ${hole} (Lantai / Lifter #${hole - 10})`
+    if ([18, 25, 31, 38, 45, 52].includes(hole)) return `Hole ${hole} (Dinding Kiri)`
+    if ([24, 30, 37, 44, 51, 58].includes(hole)) return `Hole ${hole} (Dinding Kanan)`
+    if (hole === 59) return 'Hole 59 (Lengkung Kiri Atas)'
+    if (hole === 65) return 'Hole 65 (Lengkung Kanan Atas)'
+    if (hole >= 60 && hole <= 64) return `Hole ${hole} (Atap / Roof #${hole - 59})`
+    if (hole >= 53 && hole <= 57) return `Hole ${hole} (Grid Row 1 Atas)`
+    if (hole >= 46 && hole <= 50) return `Hole ${hole} (Grid Row 2)`
+    if (hole >= 39 && hole <= 43) return `Hole ${hole} (Grid Row 3)`
+    if (hole >= 32 && hole <= 36) return `Hole ${hole} (Grid Row 4)`
+    if (hole >= 26 && hole <= 29) return `Hole ${hole} (Grid Row 5)`
+    if (hole >= 19 && hole <= 23) return `Hole ${hole} (Grid Row 6 Bawah)`
+    return `Hole ${hole}`
+  }
+
+  // RENDER SINGLE HOLE NODE HELPER FOR SVG
+  const renderHole = (
+    hole: number,
+    cx: number,
+    cy: number,
+    r: number,
+    textX: number,
+    textYSim: number,
+    textYTarget: number,
+    textAnchor: 'middle' | 'start' | 'end' = 'middle',
+    fontSize = 11
+  ) => {
+    const simVal = getHole(simulatedFlat, hole)
+    const targetVal = getHole(targetDelays, hole)
+    const isMatch = simVal === targetVal
+    const isSelected = isEditMode && selectedHoles.includes(hole)
+
+    // Node fill color: White for students; Green (match) or Amber (mismatch) for admin
+    const nodeColor = !isAdminView
+      ? '#FFFFFF'
+      : isMatch
+      ? '#22C55E'
+      : '#F59E0B'
+
+    return (
+      <g
+        key={`hole-node-${hole}`}
+        className={isEditMode ? 'cursor-pointer transition-transform hover:scale-110' : ''}
+        onClick={() => {
+          if (isEditMode) {
+            handleToggleHoleSelection(hole)
+          }
+        }}
+      >
+        {/* Selection indicator ring when in Edit Mode */}
+        {isSelected && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r + 5}
+            fill="none"
+            stroke="#00E5FF"
+            strokeWidth="3"
+            strokeDasharray="4 2"
+            className="animate-spin"
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+          />
+        )}
+
+        {/* Outer Glow in Admin View */}
+        {isAdminView && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r + 1.5}
+            fill="none"
+            stroke={isSelected ? '#00E5FF' : isMatch ? '#22C55E' : '#F59E0B'}
+            strokeWidth="1"
+            opacity="0.4"
+          />
+        )}
+
+        {/* Blast Hole Circle */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill={isSelected ? '#00E5FF' : nodeColor}
+          stroke={isSelected ? '#FFFFFF' : '#000000'}
+          strokeWidth={isSelected ? 2.5 : 1.5}
+        />
+
+        {/* VALUE 1 (TOP): Simulated Input from VR Simulator */}
+        <text
+          x={textX}
+          y={isAdminView ? textYSim : textYSim + 4}
+          fill="#FFFFFF"
+          fontSize={fontSize}
+          fontWeight="bold"
+          fontFamily="monospace"
+          textAnchor={textAnchor}
+          filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+        >
+          {simVal} ms
+        </text>
+
+        {/* VALUE 2 (BOTTOM): Expected / Standard Target Delay (Admin ONLY) */}
+        {isAdminView && (
+          <text
+            x={textX}
+            y={textYTarget}
+            fill={isSelected ? '#00E5FF' : '#FFFF00'}
+            fontSize={fontSize - 1.5}
+            fontWeight="bold"
+            fontFamily="monospace"
+            textAnchor={textAnchor}
+            filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+            className="select-none"
+          >
+            Std: {targetVal} ms
+          </text>
+        )}
+      </g>
+    )
+  }
 
   return (
-    <div className="w-full bg-gradient-to-br from-[#120418] via-[#090a12] to-[#041214] text-white p-4 sm:p-8 rounded-3xl border border-gray-800 shadow-2xl overflow-x-auto select-none font-sans">
+    <div className="w-full bg-gradient-to-br from-[#120418] via-[#090a12] to-[#041214] text-white p-3 sm:p-6 rounded-3xl border border-gray-800 shadow-2xl select-none font-sans">
       
-      {/* Header bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800/80">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-800/80">
         <div>
-          <span className="text-[10px] font-black tracking-widest text-[#FFF000] uppercase bg-black/60 px-3 py-1 rounded-md border border-yellow-500/30">
-            📊 DATA REALTIME UNREAL ENGINE
-          </span>
-          <h3 className="text-xl font-bold text-white mt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-black tracking-widest text-[#FFF000] uppercase bg-black/60 px-3 py-1 rounded-md border border-yellow-500/30">
+              📊 DATA REALTIME UNREAL ENGINE
+            </span>
+
+            {isAdminView ? (
+              <span className="text-[10px] font-bold tracking-wider text-cyan-300 uppercase bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-500/40 flex items-center">
+                <Sparkles className="w-3 h-3 mr-1 text-cyan-400" />
+                Mode Administrator & Evaluasi Acuan
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold tracking-wider text-gray-300 uppercase bg-gray-900/60 px-2.5 py-1 rounded-md border border-gray-700">
+                Portal Peserta
+              </span>
+            )}
+          </div>
+
+          <h3 className="text-lg sm:text-xl font-bold text-white mt-1.5 flex items-center gap-2">
             {title || 'Diagram Setting Delay Peledakan Tambang Bawah Tanah'}
+            {studentName && <span className="text-yellow-400 font-semibold text-sm">({studentName})</span>}
           </h3>
         </div>
-        <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-400 font-mono">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-          <span>Array Data Synced</span>
-        </div>
+
+        {/* Admin Controls & Mode Switch */}
+        {isAdminView && (
+          <div className="flex flex-wrap items-center gap-2">
+            
+            {/* View Mode Switch (Diagram vs Table) */}
+            <div className="bg-slate-900 p-1 rounded-xl border border-gray-800 flex items-center">
+              <button
+                type="button"
+                onClick={() => setViewMode('visual')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'visual'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                Diagram Visual
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                Input Tabel (66 Lubang)
+              </button>
+            </div>
+
+            {/* Toggle Edit Mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditMode(!isEditMode)
+                if (isEditMode) {
+                  setSelectedHoles([])
+                  setShowBatchEditor(false)
+                }
+              }}
+              className={`inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border ${
+                isEditMode
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-300 ring-2 ring-cyan-400/50'
+                  : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-500/40 hover:border-cyan-400'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1.5" />
+              {isEditMode ? 'Selesai Mengedit' : 'Edit Delay Acuan'}
+            </button>
+
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => setShowBatchEditor(!showBatchEditor)}
+                className="inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-gray-200 border border-gray-700 transition-all cursor-pointer"
+              >
+                <Layers className="w-3.5 h-3.5 mr-1.5 text-yellow-400" />
+                {showBatchEditor ? 'Tutup Panel Formasi' : 'Atur per Formasi'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Main Diagram Content: Left Tunnel Face + Right Box Cut Zoom */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        
-        {/* LEFT PANEL: Tunnel Arch Cross-Section Profile (7 Cols) */}
-        <div className="lg:col-span-7 flex flex-col items-center justify-center relative p-2 min-w-[340px]">
+      {/* ADMIN EVALUATION COMPARISON SUMMARY BAR */}
+      {isAdminView && (
+        <div className="mb-5 p-3.5 bg-slate-900/80 rounded-2xl border border-gray-800 flex flex-wrap items-center justify-between gap-4 text-xs">
           
-          {/* Tunnel Canvas Container */}
-          <div className="relative w-full max-w-[440px] aspect-[5/5.5] flex items-center justify-center p-2 bg-gray-950/40 rounded-3xl border border-gray-800/40 shadow-2xl">
-            <svg viewBox="0 0 500 540" className="w-full h-full select-none overflow-visible">
+          {/* Comparison Legend */}
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-gray-400 font-semibold uppercase text-[10px] tracking-wider">Keterangan:</span>
+            
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-white border border-gray-500"></span>
+              <span className="text-gray-200 font-medium">Nilai Atas: <strong className="text-white">Simulasi Peserta</strong></span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-600"></span>
+              <span className="text-yellow-300 font-medium">Nilai Bawah: <strong className="text-yellow-200">Acuan Standar (Std)</strong></span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              <span className="text-green-400 font-medium">Hijau: Sesuai</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <span className="text-amber-400 font-medium">Oranye: Selisih</span>
+            </div>
+          </div>
+
+          {/* Quick Accuracy Score */}
+          <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-xl border border-gray-800">
+            <div className="text-right">
+              <div className="text-[10px] text-gray-400 uppercase font-semibold">Tingkat Kesesuaian Delay</div>
+              <div className="text-sm font-black text-yellow-400 font-mono">
+                {stats.matches} / {stats.total} Sesuai ({stats.accuracy}%)
+              </div>
+            </div>
+            <div className={`p-1.5 rounded-lg ${stats.accuracy >= 80 ? 'bg-green-950/80 text-green-400' : 'bg-amber-950/80 text-amber-400'}`}>
+              {stats.accuracy >= 80 ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* NOTIFICATION MESSAGES */}
+      {saveSuccessMsg && (
+        <div className="mb-4 p-3 bg-green-950/80 border border-green-500/50 rounded-2xl text-xs text-green-300 flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span className="font-semibold">{saveSuccessMsg}</span>
+          </div>
+          <button type="button" onClick={() => setSaveSuccessMsg(null)} className="text-gray-400 hover:text-white cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {saveErrorMsg && (
+        <div className="mb-4 p-3 bg-rose-950/80 border border-rose-500/50 rounded-2xl text-xs text-rose-300 flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <span className="font-semibold">{saveErrorMsg}</span>
+          </div>
+          <button type="button" onClick={() => setSaveErrorMsg(null)} className="text-gray-400 hover:text-white cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* EDIT MODE TOOLBAR & CONTROLS */}
+      {isAdminView && isEditMode && (
+        <div className="mb-6 p-4 sm:p-5 bg-slate-950/95 rounded-2xl border border-cyan-500/50 shadow-2xl space-y-4 animate-in slide-in-from-top-3">
+          
+          {/* Top Row: Save Buttons & Global Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-800">
+            <div>
+              <h4 className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+                <Edit3 className="w-4 h-4 text-cyan-400" />
+                Panel Pengeditan Delay Acuan (Input Manual Bebas Angka)
+              </h4>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Pilih lubang (bisa pilih banyak sekaligus atau pilih semua), lalu ketik angka manual berapa pun sesuai standar yang diinginkan.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyFromSimulation}
+                className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-xl border border-gray-700 font-semibold cursor-pointer flex items-center gap-1"
+                title="Salin seluruh delay hasil simulasi peserta ke acuan standar"
+              >
+                <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                Salin dari Simulasi
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetToDefault}
+                className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-xl border border-gray-700 font-semibold cursor-pointer flex items-center gap-1"
+                title="Kembalikan semua nilai ke acuan resmi BDTBT ESDM"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-yellow-400" />
+                Reset Standar BDTBT
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveForThisExam}
+                disabled={isSaving}
+                className="inline-flex items-center px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+              >
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                Simpan untuk Ujian Ini
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveAsGlobalStandard}
+                disabled={isSaving}
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 rounded-xl text-xs font-extrabold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                title="Menetapkan template delay ini untuk seluruh peserta dan ujian baru"
+              >
+                <Globe className="w-3.5 h-3.5 mr-1.5" />
+                Jadikan Acuan Global
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Selection Filter Chips */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs font-bold text-gray-300 mr-1 flex items-center gap-1">
+              <CheckSquare className="w-3.5 h-3.5 text-cyan-400" />
+              Pilih Cepat:
+            </span>
+
+            <button
+              type="button"
+              onClick={handleSelectAllHoles}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${
+                selectedHoles.length === 66
+                  ? 'bg-cyan-400 text-slate-950 border-cyan-300 font-bold'
+                  : 'bg-slate-900 hover:bg-slate-800 text-gray-300 border-gray-700'
+              }`}
+            >
+              Pilih Semua (66 Lubang)
+            </button>
+
+            {SECTIONS.map((sec) => {
+              const allInSec = sec.holes.every((h) => selectedHoles.includes(h))
+              const someInSec = sec.holes.some((h) => selectedHoles.includes(h))
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => handleToggleSectionSelection(sec.holes)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${
+                    allInSec
+                      ? 'bg-cyan-400 text-slate-950 border-cyan-300 font-bold'
+                      : someInSec
+                      ? 'bg-cyan-950/70 text-cyan-300 border-cyan-500/50'
+                      : 'bg-slate-900 hover:bg-slate-800 text-gray-300 border-gray-700'
+                  }`}
+                >
+                  {sec.shortLabel}
+                </button>
+              )
+            })}
+
+            {selectedHoles.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-300 bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800 cursor-pointer ml-auto"
+              >
+                Batal Pilih ({selectedHoles.length})
+              </button>
+            )}
+          </div>
+
+          {/* DEDICATED MANUAL INPUT ACTION BAR */}
+          <div className="p-4 bg-slate-900/90 rounded-2xl border border-cyan-500/40 shadow-inner flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Target Lubang Terpilih:
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/50">
+                  {selectedHoles.length} / 66 Lubang
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                {selectedHoles.length === 0
+                  ? 'Klik lingkaran lubang pada diagram, atau tombol "Pilih Cepat" di atas untuk mulai memasukkan angka.'
+                  : selectedHoles.length === 66
+                  ? 'Seluruh 66 lubang ledak dipilih'
+                  : selectedHoles.map((h) => `#${h}`).join(', ')}
+              </p>
+            </div>
+
+            {/* MANUAL NUMBER INPUT & STEPPER */}
+            <form onSubmit={handleApplyManualToSelected} className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-gray-300 mr-1">Nilai Delay:</span>
               
-              {/* Outer Thick Tunnel Arch Line */}
-              <path
-                d="M 120 50 Q 50 50 50 120 L 50 490 L 450 490 L 450 120 Q 450 50 380 50 Z"
-                fill="none"
-                stroke="#E5E7EB"
-                strokeWidth="6"
-                strokeLinejoin="round"
-                filter="drop-shadow(0px 0px 8px rgba(255,255,255,0.15))"
-              />
+              <div className="flex items-center bg-slate-950 rounded-xl border border-cyan-500/60 p-1 shadow-md">
+                <button
+                  type="button"
+                  onClick={() => handleAdjustManual(-25)}
+                  disabled={selectedHoles.length === 0}
+                  className="px-2 py-1 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono disabled:opacity-30 cursor-pointer"
+                  title="Kurangi 25"
+                >
+                  -25
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustManual(-10)}
+                  disabled={selectedHoles.length === 0}
+                  className="px-2 py-1 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono disabled:opacity-30 cursor-pointer"
+                  title="Kurangi 10"
+                >
+                  -10
+                </button>
 
-              {/* PERIMETER NODES & LABELS */}
+                <input
+                  type="number"
+                  min="0"
+                  max="5000"
+                  step="1"
+                  disabled={selectedHoles.length === 0}
+                  value={manualInputValue}
+                  onChange={(e) => setManualInputValue(e.target.value)}
+                  placeholder="Ketik ms..."
+                  className="w-24 sm:w-28 text-center bg-transparent text-white font-mono font-extrabold text-sm px-2 py-1 outline-none border-x border-gray-800 disabled:opacity-40"
+                />
 
-              {/* Top Roof (5 Nodes) */}
-              {[120, 185, 250, 315, 380].map((x, idx) => (
-                <g key={`p-top-${idx}`}>
-                  <text x={x} y="32" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{perimeter.top[idx] ?? 0} ms</text>
-                  <circle cx={x} cy="50" r="6" fill="white" stroke="#000" strokeWidth="1.5" />
-                </g>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => handleAdjustManual(10)}
+                  disabled={selectedHoles.length === 0}
+                  className="px-2 py-1 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono disabled:opacity-30 cursor-pointer"
+                  title="Tambah 10"
+                >
+                  +10
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustManual(25)}
+                  disabled={selectedHoles.length === 0}
+                  className="px-2 py-1 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-mono disabled:opacity-30 cursor-pointer"
+                  title="Tambah 25"
+                >
+                  +25
+                </button>
+              </div>
 
-              {/* Top-Left Curve Node */}
-              <text x="42" y="60" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="end">{perimeter.left[0] ?? 0} ms</text>
-              <circle cx="68" cy="68" r="6" fill="white" stroke="#000" strokeWidth="1.5" />
+              <span className="text-xs font-mono text-gray-400 font-bold">ms</span>
 
-              {/* Top-Right Curve Node */}
-              <text x="458" y="60" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="start">{perimeter.right[0] ?? 0} ms</text>
-              <circle cx="432" cy="68" r="6" fill="white" stroke="#000" strokeWidth="1.5" />
+              <button
+                type="submit"
+                disabled={selectedHoles.length === 0 || !manualInputValue}
+                className="px-4 py-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                Terapkan ke {selectedHoles.length} Lubang
+              </button>
+            </form>
 
-              {/* Left Wall Nodes (6 Nodes: Holes 52, 45, 38, 31, 25, 18) */}
-              {[135, 195, 255, 315, 375, 435].map((y, idx) => (
-                <g key={`p-left-${idx}`}>
-                  <text x="35" y={y + 4} fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="end">{perimeter.left[idx + 1] ?? 0} ms</text>
-                  <circle cx="50" cy={y} r="6" fill="white" stroke="#000" strokeWidth="1.5" />
-                </g>
-              ))}
+          </div>
 
-              {/* Right Wall Nodes (6 Nodes: Holes 58, 51, 44, 37, 30, 24) */}
-              {[135, 195, 255, 315, 375, 435].map((y, idx) => (
-                <g key={`p-right-${idx}`}>
-                  <text x="465" y={y + 4} fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="start">{perimeter.right[idx + 1] ?? 0} ms</text>
-                  <circle cx="450" cy={y} r="6" fill="white" stroke="#000" strokeWidth="1.5" />
-                </g>
-              ))}
+          {/* Quick Preset Pills as optional shortcuts */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs text-gray-400">
+            <span className="font-semibold text-[11px] text-gray-400 mr-1">Atau shortcut cepat:</span>
+            {QUICK_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                disabled={selectedHoles.length === 0}
+                onClick={() => {
+                  setManualInputValue(String(preset))
+                  handleSetMultipleHolesValue(selectedHoles, preset)
+                }}
+                className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-gray-300 hover:text-cyan-300 rounded-md border border-gray-800 text-[11px] font-mono cursor-pointer disabled:opacity-30 transition-colors"
+              >
+                {preset} ms
+              </button>
+            ))}
+          </div>
 
-              {/* Bottom Floor Nodes (7 Nodes) */}
-              {[50, 116, 183, 250, 316, 383, 450].map((x, idx) => (
-                <g key={`p-bot-${idx}`}>
-                  <circle cx={x} cy="490" r="6" fill="white" stroke="#000" strokeWidth="1.5" />
-                  <text x={x} y="515" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{perimeter.bottom[idx] ?? 0} ms</text>
-                </g>
-              ))}
+          {/* BATCH SECTION COLLAPSIBLE ACCORDION */}
+          {showBatchEditor && (
+            <div className="p-4 bg-slate-900/90 rounded-2xl border border-gray-800 space-y-3 mt-3 animate-in fade-in">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+                <span className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center">
+                  <Layers className="w-3.5 h-3.5 mr-1.5" />
+                  Atur Input Manual per Seluruh Formasi Bagian:
+                </span>
+                <span className="text-xs text-gray-400">
+                  Ketik angka bebas langsung di setiap formasi lalu klik Terapkan.
+                </span>
+              </div>
 
-              {/* INNER BLAST HOLE GRID (5 Cols x 6 Rows) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {SECTIONS.map((sec) => (
+                  <div
+                    key={sec.id}
+                    className="p-3 bg-slate-950 rounded-xl border border-gray-800 flex flex-col justify-between gap-2 shadow-sm"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-200">{sec.label}</span>
+                        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded">
+                          {sec.holes.length} lubang
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{sec.description}</p>
+                    </div>
 
-              {/* Row 1 (y=120) - Labels ABOVE */}
-              {[130, 190, 250, 310, 370].map((x, cIdx) => (
-                <g key={`r1-${cIdx}`}>
-                  <text x={x} y="105" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[0]?.[cIdx] ?? 0} ms</text>
-                  <circle cx={x} cy="120" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                </g>
-              ))}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-800/80">
+                      <input
+                        type="number"
+                        min="0"
+                        max="5000"
+                        step="1"
+                        value={sectionInputs[sec.id] ?? ''}
+                        onChange={(e) =>
+                          setSectionInputs((prev) => ({
+                            ...prev,
+                            [sec.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="ms..."
+                        className="w-20 px-2 py-1 bg-slate-900 border border-gray-700 text-white font-mono font-bold text-xs rounded-lg outline-none focus:border-cyan-400"
+                      />
+                      <span className="text-xs font-mono text-gray-400">ms</span>
 
-              {/* Row 2 (y=190) - Labels BELOW */}
-              {[130, 190, 250, 310, 370].map((x, cIdx) => (
-                <g key={`r2-${cIdx}`}>
-                  <circle cx={x} cy="190" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                  <text x={x} y="210" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[1]?.[cIdx] ?? 0} ms</text>
-                </g>
-              ))}
+                      <button
+                        type="button"
+                        onClick={() => handleApplySectionManual(sec.id, sec.holes)}
+                        className="ml-auto px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        Terapkan
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-              {/* Row 3 (y=260) - Labels BELOW */}
-              {[130, 190, 250, 310, 370].map((x, cIdx) => (
-                <g key={`r3-${cIdx}`}>
-                  <circle cx={x} cy="260" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                  <text x={x} y="280" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[2]?.[cIdx] ?? 0} ms</text>
-                </g>
-              ))}
+        </div>
+      )}
 
-              {/* Row 4 (y=330) - Labels BELOW */}
-              {[130, 190, 250, 310, 370].map((x, cIdx) => (
-                <g key={`r4-${cIdx}`}>
-                  <circle cx={x} cy="330" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                  <text x={x} y="350" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[3]?.[cIdx] ?? 0} ms</text>
-                </g>
-              ))}
-
-              {/* Row 5 (y=400) - Col 1, 2, 4, 5 (Col 3 is Box Cut) */}
-              {[130, 190, 310, 370].map((x, idx) => {
-                const cIdx = x < 250 ? (x === 130 ? 0 : 1) : (x === 310 ? 3 : 4)
-                return (
-                  <g key={`r5-${idx}`}>
-                    <circle cx={x} cy="400" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                    <text x={x} y="420" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[4]?.[cIdx] ?? 0} ms</text>
-                  </g>
-                )
-              })}
-
-              {/* Row 6 (y=455) - Labels BELOW */}
-              {[130, 190, 250, 310, 370].map((x, cIdx) => (
-                <g key={`r6-${cIdx}`}>
-                  <circle cx={x} cy="455" r="5" fill="white" stroke="#000" strokeWidth="1" />
-                  <text x={x} y="475" fill="white" fontSize="11" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{grid[5]?.[cIdx] ?? 0} ms</text>
-                </g>
-              ))}
-
-              {/* OVERLAY BOX CUT AT ROW 5 CENTER (x=250, y=400) */}
-              <g id="box-cut-overlay">
-                {/* Dashed Square Bounding Box */}
-                <rect x="215" y="365" width="70" height="70" fill="none" stroke="white" strokeWidth="2.5" strokeDasharray="5 4" rx="2" />
+      {/* VIEW MODE 1: VISUAL DIAGRAM (TUNNEL ARCH + BOX CUT DETAIL) */}
+      {viewMode === 'visual' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          {/* LEFT PANEL: Tunnel Arch Cross-Section Profile (7 Cols) */}
+          <div className="lg:col-span-7 flex flex-col items-center justify-center relative p-2 min-w-[340px]">
+            
+            <div className="relative w-full max-w-[460px] aspect-[5/5.5] flex items-center justify-center p-2 bg-gray-950/40 rounded-3xl border border-gray-800/40 shadow-2xl">
+              <svg viewBox="0 0 500 550" className="w-full h-full select-none overflow-visible">
                 
-                {/* Outer 8 Nodes on Dashed Square */}
-                <circle cx="215" cy="365" r="4" fill="white" />
-                <circle cx="250" cy="365" r="4" fill="white" />
-                <circle cx="285" cy="365" r="4" fill="white" />
-                <circle cx="215" cy="400" r="4" fill="white" />
-                <circle cx="285" cy="400" r="4" fill="white" />
-                <circle cx="215" cy="435" r="4" fill="white" />
-                <circle cx="250" cy="435" r="4" fill="white" />
-                <circle cx="285" cy="435" r="4" fill="white" />
+                {/* Outer Thick Tunnel Arch Line */}
+                <path
+                  d="M 120 50 Q 50 50 50 120 L 50 490 L 450 490 L 450 120 Q 450 50 380 50 Z"
+                  fill="none"
+                  stroke="#E5E7EB"
+                  strokeWidth="6"
+                  strokeLinejoin="round"
+                  filter="drop-shadow(0px 0px 8px rgba(255,255,255,0.15))"
+                />
 
-                {/* V-Cut Dashed Lines */}
-                <line x1="250" y1="385" x2="233" y2="420" stroke="white" strokeWidth="2" strokeDasharray="4 3" />
-                <line x1="250" y1="385" x2="267" y2="420" stroke="white" strokeWidth="2" strokeDasharray="4 3" />
+                {/* PERIMETER NODES & LABELS */}
 
-                {/* Inner Yellow & White Nodes */}
-                <circle cx="250" cy="385" r="5.5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
-                <circle cx="250" cy="420" r="3.5" fill="white" />
-                <circle cx="233" cy="420" r="5.5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
-                <circle cx="267" cy="420" r="5.5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
-              </g>
+                {/* Top Roof (5 Nodes: Holes 60, 61, 62, 63, 64) */}
+                {[
+                  { x: 120, hole: 60 },
+                  { x: 185, hole: 61 },
+                  { x: 250, hole: 62 },
+                  { x: 315, hole: 63 },
+                  { x: 380, hole: 64 },
+                ].map(({ x, hole }) => renderHole(hole, x, 50, 6, x, 24, 37, 'middle'))}
 
-            </svg>
+                {/* Top-Left Curve Node (Hole 59) */}
+                {renderHole(59, 68, 68, 6, 42, 56, 69, 'end')}
+
+                {/* Top-Right Curve Node (Hole 65) */}
+                {renderHole(65, 432, 68, 6, 458, 56, 69, 'start')}
+
+                {/* Left Wall Nodes (6 Nodes: Holes 52, 45, 38, 31, 25, 18) */}
+                {[
+                  { y: 135, hole: 52 },
+                  { y: 195, hole: 45 },
+                  { y: 255, hole: 38 },
+                  { y: 315, hole: 31 },
+                  { y: 375, hole: 25 },
+                  { y: 435, hole: 18 },
+                ].map(({ y, hole }) => renderHole(hole, 50, y, 6, 35, y - 2, y + 11, 'end'))}
+
+                {/* Right Wall Nodes (6 Nodes: Holes 58, 51, 44, 37, 30, 24) */}
+                {[
+                  { y: 135, hole: 58 },
+                  { y: 195, hole: 51 },
+                  { y: 255, hole: 44 },
+                  { y: 315, hole: 37 },
+                  { y: 375, hole: 30 },
+                  { y: 435, hole: 24 },
+                ].map(({ y, hole }) => renderHole(hole, 450, y, 6, 465, y - 2, y + 11, 'start'))}
+
+                {/* Bottom Floor Lifter Nodes (7 Nodes: Holes 11..17) */}
+                {[
+                  { x: 50, hole: 11 },
+                  { x: 116, hole: 12 },
+                  { x: 183, hole: 13 },
+                  { x: 250, hole: 14 },
+                  { x: 316, hole: 15 },
+                  { x: 383, hole: 16 },
+                  { x: 450, hole: 17 },
+                ].map(({ x, hole }) => renderHole(hole, x, 490, 6, x, 512, 525, 'middle'))}
+
+                {/* INNER BLAST HOLE GRID (5 Cols x 6 Rows) */}
+
+                {/* Row 1 (y=120) - Holes 53..57 */}
+                {[
+                  { x: 130, hole: 53 },
+                  { x: 190, hole: 54 },
+                  { x: 250, hole: 55 },
+                  { x: 310, hole: 56 },
+                  { x: 370, hole: 57 },
+                ].map(({ x, hole }) => renderHole(hole, x, 120, 5, x, 97, 110, 'middle', 10.5))}
+
+                {/* Row 2 (y=190) - Holes 46..50 */}
+                {[
+                  { x: 130, hole: 46 },
+                  { x: 190, hole: 47 },
+                  { x: 250, hole: 48 },
+                  { x: 310, hole: 49 },
+                  { x: 370, hole: 50 },
+                ].map(({ x, hole }) => renderHole(hole, x, 190, 5, x, 207, 220, 'middle', 10.5))}
+
+                {/* Row 3 (y=260) - Holes 39..43 */}
+                {[
+                  { x: 130, hole: 39 },
+                  { x: 190, hole: 40 },
+                  { x: 250, hole: 41 },
+                  { x: 310, hole: 42 },
+                  { x: 370, hole: 43 },
+                ].map(({ x, hole }) => renderHole(hole, x, 260, 5, x, 277, 290, 'middle', 10.5))}
+
+                {/* Row 4 (y=330) - Holes 32..36 */}
+                {[
+                  { x: 130, hole: 32 },
+                  { x: 190, hole: 33 },
+                  { x: 250, hole: 34 },
+                  { x: 310, hole: 35 },
+                  { x: 370, hole: 36 },
+                ].map(({ x, hole }) => renderHole(hole, x, 330, 5, x, 347, 360, 'middle', 10.5))}
+
+                {/* Row 5 (y=400) - Holes 26, 27, 28, 29 */}
+                {[
+                  { x: 130, hole: 26 },
+                  { x: 190, hole: 27 },
+                  { x: 310, hole: 28 },
+                  { x: 370, hole: 29 },
+                ].map(({ x, hole }) => renderHole(hole, x, 400, 5, x, 417, 430, 'middle', 10.5))}
+
+                {/* Row 6 (y=455) - Holes 19..23 */}
+                {[
+                  { x: 130, hole: 19 },
+                  { x: 190, hole: 20 },
+                  { x: 250, hole: 21 },
+                  { x: 310, hole: 22 },
+                  { x: 370, hole: 23 },
+                ].map(({ x, hole }) => renderHole(hole, x, 455, 5, x, 472, 485, 'middle', 10.5))}
+
+                {/* OVERLAY BOX CUT AT ROW 5 CENTER (x=250, y=400) */}
+                <g id="box-cut-overlay">
+                  <rect x="215" y="365" width="70" height="70" fill="none" stroke="white" strokeWidth="2.5" strokeDasharray="5 4" rx="2" />
+                  
+                  {/* 8 Outer Mini Nodes */}
+                  <circle cx="215" cy="365" r="4" fill="white" />
+                  <circle cx="250" cy="365" r="4" fill="white" />
+                  <circle cx="285" cy="365" r="4" fill="white" />
+                  <circle cx="215" cy="400" r="4" fill="white" />
+                  <circle cx="285" cy="400" r="4" fill="white" />
+                  <circle cx="215" cy="435" r="4" fill="white" />
+                  <circle cx="250" cy="435" r="4" fill="white" />
+                  <circle cx="285" cy="435" r="4" fill="white" />
+
+                  {/* V-Cut Dashed Lines */}
+                  <line x1="250" y1="385" x2="233" y2="420" stroke="white" strokeWidth="2" strokeDasharray="4 3" />
+                  <line x1="250" y1="385" x2="267" y2="420" stroke="white" strokeWidth="2" strokeDasharray="4 3" />
+
+                  {/* Inner Yellow Nodes */}
+                  <circle cx="250" cy="385" r="5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
+                  <circle cx="250" cy="420" r="3.5" fill="white" />
+                  <circle cx="233" cy="420" r="5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
+                  <circle cx="267" cy="420" r="5" fill="#FFFF00" stroke="#FFF000" strokeWidth="1" />
+                </g>
+
+              </svg>
+            </div>
           </div>
-        </div>
 
-        {/* RIGHT PANEL: DELAY BOX CUT Zoomed Detail View (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-black/40 rounded-3xl border border-gray-800/80">
+          {/* RIGHT PANEL: DELAY BOX CUT Zoomed Detail View (5 Cols) */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-black/40 rounded-3xl border border-gray-800/80">
+            
+            <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-widest mb-6 font-sans drop-shadow-md text-center">
+              DELAY BOX CUT
+            </h2>
+
+            <div className="relative w-[290px] h-[290px] sm:w-[330px] sm:h-[330px] flex items-center justify-center p-2 bg-gray-950/60 rounded-2xl border border-gray-800/50 shadow-2xl">
+              <svg viewBox="0 0 320 330" className="w-full h-full select-none overflow-visible">
+                
+                {/* Outer Bounding Dashed Square */}
+                <rect
+                  x="50"
+                  y="50"
+                  width="200"
+                  height="200"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeDasharray="10 8"
+                  rx="4"
+                />
+
+                {/* Dashed V-Cut Inverted V Lines connecting Apex Yellow to Base Yellows */}
+                <line
+                  x1="150"
+                  y1="100"
+                  x2="105"
+                  y2="205"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeDasharray="8 6"
+                />
+                <line
+                  x1="150"
+                  y1="100"
+                  x2="195"
+                  y2="205"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeDasharray="8 6"
+                />
+
+                {/* OUTER PERIMETER NODES */}
+
+                {/* Top Row (Holes 8, 5, 9) */}
+                {renderHole(8, 50, 50, 9, 50, 23, 36, 'middle', 12)}
+                {renderHole(5, 150, 50, 9, 150, 23, 36, 'middle', 12)}
+                {renderHole(9, 250, 50, 9, 250, 23, 36, 'middle', 12)}
+
+                {/* Middle Side Nodes (Holes 6 & 4) */}
+                {renderHole(6, 50, 150, 9, 32, 146, 159, 'end', 12)}
+                {renderHole(4, 250, 150, 9, 268, 146, 159, 'start', 12)}
+
+                {/* Bottom Row (Holes 7, 3, 10) */}
+                {renderHole(7, 50, 250, 9, 50, 272, 285, 'middle', 12)}
+                {renderHole(3, 150, 250, 9, 150, 272, 285, 'middle', 12)}
+                {renderHole(10, 250, 250, 9, 250, 272, 285, 'middle', 12)}
+
+                {/* INNER V-CUT NODES */}
+                
+                {/* Apex Yellow Node (Guide only, no text data) */}
+                <circle cx="150" cy="100" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
+
+                {/* Inner Row 1: Top-Left White (Hole 1) */}
+                {renderHole(1, 105, 100, 7.5, 105, 120, 133, 'middle', 11)}
+
+                {/* Inner Row 1: Top-Right White (Hole 2) */}
+                {renderHole(2, 195, 100, 7.5, 195, 120, 133, 'middle', 11)}
+
+                {/* Inner Row 2: Center White Node (Hole 0) */}
+                {renderHole(0, 150, 190, 7.5, 150, 165, 178, 'middle', 11)}
+
+                {/* Left Base Yellow Node (Guide only, no text data) */}
+                <circle cx="105" cy="205" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
+
+                {/* Right Base Yellow Node (Guide only, no text data) */}
+                <circle cx="195" cy="205" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
+
+              </svg>
+            </div>
+
+            <div className="mt-6 text-center text-xs text-gray-400 space-y-1">
+              <p className="font-semibold text-[#FFF000]">🟡 Formasi Segitiga V-Cut (Initial Box Cut)</p>
+              <p>Node Kuning Terhubung Garis Putus-Putus</p>
+            </div>
+          </div>
+
+        </div>
+      ) : (
+        /* VIEW MODE 2: FAST TABLE / FORM GRID INPUT FOR ALL 66 HOLES */
+        <div className="space-y-6 animate-in fade-in duration-200">
           
-          <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-widest mb-6 font-sans drop-shadow-md text-center">
-            DELAY BOX CUT
-          </h2>
-
-          {/* SVG Rendered Box Cut Diagram - Exact 1:1 Match with Reference */}
-          <div className="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] flex items-center justify-center p-2 bg-gray-950/60 rounded-2xl border border-gray-800/50 shadow-2xl">
-            <svg viewBox="0 0 300 300" className="w-full h-full select-none overflow-visible">
-              
-              {/* Outer Bounding Dashed Square */}
-              <rect
-                x="50"
-                y="50"
-                width="200"
-                height="200"
-                fill="none"
-                stroke="white"
-                strokeWidth="3.5"
-                strokeDasharray="10 8"
-                rx="4"
+          {/* Table Search & Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-900 rounded-2xl border border-gray-800">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder="Cari nomor lubang / nama formasi..."
+                className="w-full pl-9 pr-4 py-1.5 bg-slate-950 border border-gray-700 rounded-xl text-xs text-white placeholder-gray-500 outline-none focus:border-cyan-400 font-mono"
               />
+            </div>
 
-              {/* Dashed V-Cut Inverted V Lines connecting Apex Yellow to Base Yellows */}
-              <line
-                x1="150"
-                y1="100"
-                x2="105"
-                y2="205"
-                stroke="white"
-                strokeWidth="3.5"
-                strokeDasharray="8 6"
-              />
-              <line
-                x1="150"
-                y1="100"
-                x2="195"
-                y2="205"
-                stroke="white"
-                strokeWidth="3.5"
-                strokeDasharray="8 6"
-              />
-
-              {/* OUTER PERIMETER NODES & LABELS */}
-              
-              {/* Top Row (3 Nodes) */}
-              {/* Top-Left */}
-              <text x="50" y="32" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[0] ?? 0} ms</text>
-              <circle cx="50" cy="50" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Top-Center */}
-              <text x="150" y="32" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[1] ?? 0} ms</text>
-              <circle cx="150" cy="50" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Top-Right */}
-              <text x="250" y="32" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[2] ?? 0} ms</text>
-              <circle cx="250" cy="50" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Middle Side Nodes (2 Nodes) */}
-              {/* Left-Center */}
-              <text x="32" y="154" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="end">{boxCut.outer[7] ?? 0} ms</text>
-              <circle cx="50" cy="150" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Right-Center */}
-              <text x="268" y="154" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="start">{boxCut.outer[3] ?? 0} ms</text>
-              <circle cx="250" cy="150" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Bottom Row (3 Nodes) */}
-              {/* Bottom-Left */}
-              <circle cx="50" cy="250" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-              <text x="50" y="275" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[6] ?? 0} ms</text>
-
-              {/* Bottom-Center */}
-              <circle cx="150" cy="250" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-              <text x="150" y="275" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[5] ?? 0} ms</text>
-
-              {/* Bottom-Right */}
-              <circle cx="250" cy="250" r="9" fill="white" stroke="#000" strokeWidth="1.5" />
-              <text x="250" y="275" fill="white" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.outer[4] ?? 0} ms</text>
-
-              {/* INNER V-CUT NODES & LABELS */}
-              
-              {/* Inner Row 1: Apex Yellow Node (No Text Data) */}
-              <circle cx="150" cy="100" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
-
-              {/* Inner Row 1: Top-Left White */}
-              <circle cx="105" cy="100" r="7.5" fill="white" stroke="#000" strokeWidth="1.5" />
-              <text x="105" y="122" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.inner[1] ?? 0} ms</text>
-
-              {/* Inner Row 1: Top-Right White */}
-              <circle cx="195" cy="100" r="7.5" fill="white" stroke="#000" strokeWidth="1.5" />
-              <text x="195" y="122" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.inner[2] ?? 0} ms</text>
-
-              {/* Inner Row 2: Center White Node */}
-              <text x="150" y="174" fill="white" fontSize="12" fontWeight="bold" fontFamily="monospace" textAnchor="middle">{boxCut.inner[3] ?? 0} ms</text>
-              <circle cx="150" cy="190" r="7.5" fill="white" stroke="#000" strokeWidth="1.5" />
-
-              {/* Inner Row 3: Left Base Yellow Node (No Text Data) */}
-              <circle cx="105" cy="205" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
-
-              {/* Inner Row 3: Right Base Yellow Node (No Text Data) */}
-              <circle cx="195" cy="205" r="10" fill="#FFFF00" stroke="#FFF000" strokeWidth="2" filter="drop-shadow(0px 0px 6px #FFFF00)" />
-
-            </svg>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSelectAllHoles}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
+              >
+                Pilih Semua
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-gray-200 rounded-xl border border-gray-700 cursor-pointer"
+              >
+                Bersihkan Pilihan
+              </button>
+            </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-gray-400 space-y-1">
-            <p className="font-semibold text-[#FFF000]">🟡 Formasi Segitiga V-Cut (Initial Box Cut)</p>
-            <p>Node Kuning Terhubung Garis Putus-Putus</p>
+          {/* Formations List with direct editable table rows */}
+          <div className="space-y-4">
+            {SECTIONS.map((sec) => {
+              const filteredHoles = sec.holes.filter((h) => {
+                if (!tableSearch) return true
+                const query = tableSearch.toLowerCase()
+                return (
+                  String(h).includes(query) ||
+                  getHoleName(h).toLowerCase().includes(query) ||
+                  sec.label.toLowerCase().includes(query)
+                )
+              })
+
+              if (filteredHoles.length === 0) return null
+
+              const allSecSelected = sec.holes.every((h) => selectedHoles.includes(h))
+
+              return (
+                <div
+                  key={`table-sec-${sec.id}`}
+                  className="bg-slate-950/80 rounded-2xl border border-gray-800 overflow-hidden shadow-lg"
+                >
+                  {/* Section Group Header */}
+                  <div className="p-3.5 bg-slate-900 border-b border-gray-800 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSectionSelection(sec.holes)}
+                        className="text-gray-400 hover:text-cyan-400 cursor-pointer"
+                        title={allSecSelected ? 'Batal pilih formasi ini' : 'Pilih semua di formasi ini'}
+                      >
+                        {allSecSelected ? (
+                          <CheckSquare className="w-4 h-4 text-cyan-400" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span>{sec.label}</span>
+                        <span className="text-xs font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                          {sec.holes.length} Lubang
+                        </span>
+                      </h4>
+                    </div>
+
+                    {/* Set All in this Section Quick Input */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-gray-400 font-semibold">Set Semua di Bagian Ini:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="5000"
+                        step="1"
+                        value={sectionInputs[sec.id] ?? ''}
+                        onChange={(e) =>
+                          setSectionInputs((prev) => ({
+                            ...prev,
+                            [sec.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="ms..."
+                        className="w-20 px-2 py-1 bg-slate-950 border border-gray-700 text-white font-mono font-bold text-xs rounded-lg outline-none focus:border-cyan-400 text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleApplySectionManual(sec.id, sec.holes)}
+                        className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        Terapkan
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Hole Rows Grid */}
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filteredHoles.map((hole) => {
+                      const simVal = getHole(simulatedFlat, hole)
+                      const targetVal = getHole(targetDelays, hole)
+                      const isMatch = simVal === targetVal
+                      const isSelected = selectedHoles.includes(hole)
+                      const diff = targetVal - simVal
+
+                      return (
+                        <div
+                          key={`table-hole-${hole}`}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                            isSelected
+                              ? 'bg-cyan-950/40 border-cyan-500/70 shadow-sm'
+                              : 'bg-slate-900/60 border-gray-800/80 hover:border-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleHoleSelection(hole)}
+                              className="text-gray-400 hover:text-cyan-400 cursor-pointer flex-shrink-0"
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-4 h-4 text-cyan-400" />
+                              ) : (
+                                <Square className="w-4 h-4" />
+                              )}
+                            </button>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono font-black text-white bg-slate-800 px-1.5 py-0.5 rounded border border-gray-700">
+                                  #{hole}
+                                </span>
+                                <span className="text-[11px] font-semibold text-gray-300 truncate">
+                                  {getHoleName(hole).replace(`Hole ${hole} `, '')}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5 font-mono">
+                                Simulasi: <strong className="text-white">{simVal} ms</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Direct Manual Number Input for this hole */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <input
+                              type="number"
+                              min="0"
+                              max="5000"
+                              step="1"
+                              value={targetVal}
+                              onChange={(e) =>
+                                handleSetHoleValue(hole, parseInt(e.target.value, 10) || 0)
+                              }
+                              className={`w-18 px-2 py-1 bg-slate-950 border font-mono font-bold text-xs rounded-lg text-center outline-none focus:ring-1 transition-all ${
+                                isMatch
+                                  ? 'border-green-600/70 text-green-300 focus:ring-green-400'
+                                  : 'border-yellow-600/70 text-yellow-300 focus:ring-yellow-400'
+                              }`}
+                            />
+                            <span className="text-[10px] font-mono text-gray-400">ms</span>
+
+                            <div
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                isMatch ? 'bg-green-500' : 'bg-amber-500'
+                              }`}
+                              title={
+                                isMatch
+                                  ? 'Nilai Sesuai dengan Simulasi'
+                                  : `Selisih: ${diff > 0 ? `+${diff}` : diff} ms`
+                              }
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
+
         </div>
+      )}
 
-      </div>
     </div>
   )
 })
