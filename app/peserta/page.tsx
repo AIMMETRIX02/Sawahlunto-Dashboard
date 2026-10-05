@@ -347,6 +347,17 @@ export default function PesertaDashboard() {
           onClose={() => setDelayModalStudent(null)}
           title={`${delayModalStudent.modul || 'Simulasi Peledakan'} (${delayModalStudent.nama} - ${delayModalStudent.tanggal})`}
           delayData={delayModalStudent.delay_data}
+          studentId={delayModalStudent.id}
+          studentName={delayModalStudent.nama}
+          isAdminView={isSuperadmin}
+          onDataUpdated={(updatedDelayData) => {
+            setAllExams((prev) =>
+              prev.map((s) =>
+                s.id === delayModalStudent.id ? { ...s, delay_data: updatedDelayData } : s
+              )
+            )
+            setDelayModalStudent((prev) => (prev ? { ...prev, delay_data: updatedDelayData } : null))
+          }}
         />
       )}
 
